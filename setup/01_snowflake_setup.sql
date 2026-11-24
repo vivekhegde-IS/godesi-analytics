@@ -1,3 +1,4 @@
+
 -- ============================================
 -- GoDesi Analytics: Snowflake setup
 -- Rerunnable: safe to run multiple times
@@ -41,16 +42,35 @@ CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.STAGING       COMMENT = 'Silver: cl
 CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.INTERMEDIATE  COMMENT = 'Silver: joined and enriched models';
 CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.MARTS         COMMENT = 'Gold: star schema and business marts for BI';
 CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.SNAPSHOTS     COMMENT = 'Price history (SCD Type 2)';
-
-
--- 4. ROLES            (role: USERADMIN)
-
--- 5. GRANTS           (role: SECURITYADMIN)
 CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.MARTS         COMMENT = 'Gold: star schema and business marts for BI';
 CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.SNAPSHOTS     COMMENT = 'Price history (SCD Type 2)';
 
+SHOW WAREHOUSES LIKE 'GODESI_WH';
+SHOW SCHEMAS IN DATABASE GODESI_RAW;
+SHOW SCHEMAS IN DATABASE GODESI_ANALYTICS;
+SELECT CURRENT_USER();
 
 -- 4. ROLES            (role: USERADMIN)
+
+USE ROLE USERADMIN;
+
+CREATE ROLE IF NOT EXISTS LOADER      COMMENT = 'Loads raw files into GODESI_RAW';
+CREATE ROLE IF NOT EXISTS TRANSFORMER COMMENT = 'Used by dbt: reads RAW, builds GODESI_ANALYTICS';
+CREATE ROLE IF NOT EXISTS REPORTER    COMMENT = 'Used by BI tools: reads MARTS only';
+
+-- role hierarchy: custom roles roll up to SYSADMIN
+GRANT ROLE LOADER      TO ROLE SYSADMIN;
+GRANT ROLE TRANSFORMER TO ROLE SYSADMIN;
+GRANT ROLE REPORTER    TO ROLE SYSADMIN;
+
+-- let my own user switch into each role (for testing)
+-- granting to a user needs MANAGE GRANTS, which SECURITYADMIN has
+USE ROLE SECURITYADMIN;
+GRANT ROLE LOADER      TO USER "hegdevivek379";
+GRANT ROLE TRANSFORMER TO USER "hegdevivek379";
+GRANT ROLE REPORTER    TO USER "hegdevivek379";
+
+
 
 -- 5. GRANTS           (role: SECURITYADMIN)
 
