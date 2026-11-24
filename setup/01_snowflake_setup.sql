@@ -1,12 +1,9 @@
 -- ============================================
 -- GoDesi Analytics: Snowflake setup
--- ============================================
--- GoDesi Analytics: Snowflake setup
 -- Rerunnable: safe to run multiple times
 -- ============================================
 
 -- 1. WAREHOUSE        (role: SYSADMIN)
-
 USE ROLE SYSADMIN;
 
 CREATE WAREHOUSE IF NOT EXISTS GODESI_WH
@@ -16,6 +13,7 @@ CREATE WAREHOUSE IF NOT EXISTS GODESI_WH
     AUTO_RESUME         = TRUE
     INITIALLY_SUSPENDED = TRUE
     COMMENT             = 'Compute for GoDesi: loading, dbt builds and dashboards';
+
 
 -- 2. DATABASES        (role: SYSADMIN)
 USE ROLE SYSADMIN;
@@ -38,11 +36,20 @@ CREATE SCHEMA IF NOT EXISTS GODESI_RAW.INVENTORY       COMMENT = 'Daily warehous
 CREATE SCHEMA IF NOT EXISTS GODESI_RAW.OPEN_FOOD_FACTS COMMENT = 'Real product data from Open Food Facts (ODbL)';
 
 -- analytics (silver/gold): one schema per dbt layer, plus a dev sandbox
-CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.DBT_DEV_PAI  COMMENT = 'Personal dev sandbox for dbt';
-CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.STAGING      COMMENT = 'Silver: cleaned 1:1 source models';
-CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.INTERMEDIATE COMMENT = 'Silver: joined and enriched models';
-CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.MARTS        COMMENT = 'Gold: star schema and business marts for BI';
-CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.SNAPSHOTS    COMMENT = 'Price history (SCD Type 2)';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.DBT_DEV_HEGDE COMMENT = 'Personal dev sandbox for dbt';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.STAGING       COMMENT = 'Silver: cleaned 1:1 source models';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.INTERMEDIATE  COMMENT = 'Silver: joined and enriched models';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.MARTS         COMMENT = 'Gold: star schema and business marts for BI';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.SNAPSHOTS     COMMENT = 'Price history (SCD Type 2)';
+
+
+-- 4. ROLES            (role: USERADMIN)
+
+-- 5. GRANTS           (role: SECURITYADMIN)
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.MARTS         COMMENT = 'Gold: star schema and business marts for BI';
+CREATE SCHEMA IF NOT EXISTS GODESI_ANALYTICS.SNAPSHOTS     COMMENT = 'Price history (SCD Type 2)';
+
+
 -- 4. ROLES            (role: USERADMIN)
 
 -- 5. GRANTS           (role: SECURITYADMIN)
