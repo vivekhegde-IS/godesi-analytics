@@ -1,5 +1,21 @@
 version: 2
-
 models:
-  - name: fct_inventory_daily
-    description: "End-of-day stock per warehouse and SKU, with stock-out flag and network days of cover (Q6). Grain: one row per snapshot_date, warehouse_id and sku_id."
+- name: fct_inventory_daily
+  description: 'End-of-day stock per warehouse and SKU, with stock-out flag and network days of cover (Q6). Grain: one row
+    per snapshot_date, warehouse_id and sku_id.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - snapshot_date
+        - warehouse_id
+        - sku_id
+  columns:
+  - name: sku_id
+    description: Foreign key to dim_products.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_products')
+          field: sku_id

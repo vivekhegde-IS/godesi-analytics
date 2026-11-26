@@ -1,5 +1,31 @@
 version: 2
-
 models:
-  - name: stg_off__products
-    description: "Real Open Food Facts products sold in India (ODbL). About 35 of 211 columns kept; brands mapped with the brand_mapping seed; quantity parsed into net_quantity + quantity_unit (g or ml); en: prefixes removed; unknown Nutri-Score set to NULL. Grain: one row per barcode."
+- name: stg_off__products
+  description: 'Real Open Food Facts products sold in India (ODbL). About 35 of 211 columns kept; brands mapped with the brand_mapping
+    seed; quantity parsed into net_quantity + quantity_unit (g or ml); en: prefixes removed; unknown Nutri-Score set to NULL.
+    Grain: one row per barcode.'
+  columns:
+  - name: barcode
+    description: 'Primary key: product barcode.'
+    data_tests:
+    - unique
+    - not_null
+  - name: nutriscore_grade
+    description: A to E; NULL when unknown.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - A
+          - B
+          - C
+          - D
+          - E
+  - name: quantity_unit
+    description: g or ml after parsing.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - g
+          - ml

@@ -1,17 +1,140 @@
 version: 2
-
 models:
-  - name: base_erp__products
-    description: "Every version of every product with proper types (72 rows = 60 originals + 12 price changes). Grain: one row per sku_id per version."
-  - name: stg_erp__products
-    description: "Product master, typed. Grain: one row per sku_id (latest version; batch2 price updates win)."
-  - name: stg_erp__promotions
-    description: "Promo codes with dates, discount % and the channel they apply to. Grain: one row per promo_code."
-  - name: stg_erp__distributors
-    description: "Distributors that supply stores. Grain: one row per distributor_id."
-  - name: stg_erp__stores
-    description: "Kirana and modern-trade stores, each served by one distributor. Grain: one row per store_id."
-  - name: stg_erp__orders
-    description: "Offline orders placed by stores. Late status updates deduplicated. Grain: one row per order_id."
-  - name: stg_erp__order_items
-    description: "Lines of offline orders (cases of 6 to 48 units, trade price). Grain: one row per order_item_id."
+- name: base_erp__products
+  description: 'Every version of every product with proper types (72 rows = 60 originals + 12 price changes). Grain: one row
+    per sku_id per version.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - sku_id
+        - updated_at
+  columns:
+  - name: sku_id
+    description: 'Product id (not unique here: one row per version).'
+    data_tests:
+    - not_null
+- name: stg_erp__products
+  description: 'Product master, typed. Grain: one row per sku_id (latest version; batch2 price updates win).'
+  columns:
+  - name: sku_id
+    description: 'Primary key: GoDesi product id, e.g. GD-0001.'
+    data_tests:
+    - unique
+    - not_null
+  - name: category
+    description: Candy & Pops, Mithai or Namkeen.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - Candy & Pops
+          - Mithai
+          - Namkeen
+- name: stg_erp__promotions
+  description: 'Promo codes with dates, discount % and the channel they apply to. Grain: one row per promo_code.'
+  columns:
+  - name: promo_code
+    description: 'Primary key: promo code, e.g. DIWALI24.'
+    data_tests:
+    - unique
+    - not_null
+  - name: promo_channel
+    description: Channel the promo applies to.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - all
+          - d2c
+          - marketplace
+          - quick_commerce
+- name: stg_erp__distributors
+  description: 'Distributors that supply stores. Grain: one row per distributor_id.'
+  columns:
+  - name: distributor_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+- name: stg_erp__stores
+  description: 'Kirana and modern-trade stores, each served by one distributor. Grain: one row per store_id.'
+  columns:
+  - name: store_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: store_type
+    description: kirana or modern_trade.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - kirana
+          - modern_trade
+  - name: distributor_id
+    description: Distributor serving the store.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_erp__distributors')
+          field: distributor_id
+- name: stg_erp__orders
+  description: 'Offline orders placed by stores. Late status updates deduplicated. Grain: one row per order_id.'
+  columns:
+  - name: order_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: channel
+    description: Always offline for ERP orders.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - offline
+  - name: order_status
+    description: Latest status of the order.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - placed
+          - shipped
+          - delivered
+          - cancelled
+  - name: store_id
+    description: Store that placed the order.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_erp__stores')
+          field: store_id
+- name: stg_erp__order_items
+  description: 'Lines of offline orders (cases of 6 to 48 units, trade price). Grain: one row per order_item_id.'
+  columns:
+  - name: order_item_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: order_id
+    description: Parent order.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_erp__orders')
+          field: order_id
+  - name: sku_id
+    description: Product sold.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_erp__products')
+          field: sku_id

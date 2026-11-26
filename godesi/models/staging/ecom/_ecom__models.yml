@@ -1,11 +1,84 @@
 version: 2
-
 models:
-  - name: stg_ecom__customers
-    description: "D2C customers. City spellings cleaned with the city_name_mapping seed (city_raw kept). Grain: one row per customer_id."
-  - name: stg_ecom__orders
-    description: "D2C website orders. Late status updates deduplicated. Grain: one row per order_id."
-  - name: stg_ecom__order_items
-    description: "Lines of D2C orders. Grain: one row per order_item_id."
-  - name: stg_ecom__returns
-    description: "Returns of delivered online order lines, with reason and refund. Grain: one row per return_id."
+- name: stg_ecom__customers
+  description: 'D2C customers. City spellings cleaned with the city_name_mapping seed (city_raw kept). Grain: one row per
+    customer_id.'
+  columns:
+  - name: customer_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: city
+    description: Cleaned city name.
+    data_tests:
+    - not_null
+- name: stg_ecom__orders
+  description: 'D2C website orders. Late status updates deduplicated. Grain: one row per order_id.'
+  columns:
+  - name: order_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: channel
+    description: Always d2c for website orders.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - d2c
+  - name: order_status
+    description: Latest status of the order.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - placed
+          - shipped
+          - delivered
+          - cancelled
+  - name: customer_id
+    description: Customer who ordered.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_ecom__customers')
+          field: customer_id
+- name: stg_ecom__order_items
+  description: 'Lines of D2C orders. Grain: one row per order_item_id.'
+  columns:
+  - name: order_item_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: order_id
+    description: Parent order.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_ecom__orders')
+          field: order_id
+  - name: sku_id
+    description: Product sold.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_erp__products')
+          field: sku_id
+- name: stg_ecom__returns
+  description: 'Returns of delivered online order lines, with reason and refund. Grain: one row per return_id.'
+  columns:
+  - name: return_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: order_item_id
+    description: Returned order line (D2C or marketplace).
+    data_tests:
+    - not_null
