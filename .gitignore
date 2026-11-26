@@ -10,9 +10,7 @@ data/
 *.csv.gz
 
 # dbt seeds ARE small and must be committed (exception to *.csv above)
-!seeds/
-!seeds/*.csv
-
+!godesi/seeds/*.csv
 # ---------- secrets: never commit ----------
 profiles.yml
 .env

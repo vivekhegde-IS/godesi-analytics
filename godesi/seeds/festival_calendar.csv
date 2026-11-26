@@ -1,0 +1,21 @@
+festival_name,festival_date,is_major
+Sankranti,2024-01-15,false
+Republic Day,2024-01-26,false
+Holi,2024-03-25,true
+Ugadi,2024-04-09,false
+Independence Day,2024-08-15,false
+Raksha Bandhan,2024-08-19,true
+Ganesh Chaturthi,2024-09-07,false
+Navratri,2024-10-03,false
+Diwali,2024-10-31,true
+Christmas,2024-12-25,false
+Sankranti,2025-01-14,false
+Republic Day,2025-01-26,false
+Holi,2025-03-14,true
+Ugadi,2025-03-30,false
+Independence Day,2025-08-15,false
+Raksha Bandhan,2025-08-09,true
+Ganesh Chaturthi,2025-08-27,false
+Navratri,2025-09-22,false
+Diwali,2025-10-20,true
+Christmas,2025-12-25,false
