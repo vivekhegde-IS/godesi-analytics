@@ -1,0 +1,38 @@
+version: 2
+
+# Unit tests run a model on small, hand-made input rows and compare the result with the
+# rows we expect. They test the LOGIC (joins and formulas), not the real data, so they
+# catch a broken formula before it ever reaches Snowflake tables.
+
+unit_tests:
+  - name: enriched_picks_price_valid_at_order_time_and_computes_margin
+    description: >
+      One product had a price rise from 100 to 120 on 2024-06-01. An order placed the evening
+      before must get the old MRP, an order placed at 08:00 on the change day must get the new
+      MRP (versions start at the beginning of the day), and a line whose order does not exist
+      must be dropped by the inner join. Revenue, COGS and margin follow the documented formulas.
+    model: int_order_items__enriched
+    given:
+      - input: ref('int_order_items__unioned')
+        rows:
+          - {order_item_id: L1, order_id: O1, sku_id: GD-T1, quantity: 2, unit_price_inr: 95, discount_inr: 10}
+          - {order_item_id: L2, order_id: O2, sku_id: GD-T1, quantity: 1, unit_price_inr: 120, discount_inr: 0}
+          - {order_item_id: L3, order_id: O_MISSING, sku_id: GD-T1, quantity: 1, unit_price_inr: 100, discount_inr: 0}
+      - input: ref('int_orders__unioned')
+        rows:
+          - {order_id: O1, channel: d2c, is_cancelled: false, ordered_at: '2024-05-31 23:30:00', order_date: '2024-05-31'}
+          - {order_id: O2, channel: d2c, is_cancelled: false, ordered_at: '2024-06-01 08:00:00', order_date: '2024-06-01'}
+      - input: ref('int_products__price_history')
+        rows:
+          - {sku_id: GD-T1, version_number: 1, mrp_inr: 100, cost_inr: 50, valid_from: '2024-01-01 00:00:00', valid_to: '2024-06-01 00:00:00'}
+          - {sku_id: GD-T1, version_number: 2, mrp_inr: 120, cost_inr: 50, valid_from: '2024-06-01 00:00:00', valid_to: null}
+      - input: ref('stg_erp__products')
+        rows:
+          - {sku_id: GD-T1, product_name: Test Laddu, category: Mithai}
+    expect:
+      rows:
+        # L1: 2 x 95 = 190 gross, -10 discount = 180 net, 2 x 50 = 100 cogs, 80 margin, OLD mrp 100
+        - {order_item_id: L1, mrp_at_order_inr: 100, unit_cost_inr: 50, gross_revenue_inr: 190, net_revenue_inr: 180, cogs_inr: 100, gross_margin_inr: 80}
+        # L2: ordered at 08:00 on the change day -> NEW mrp 120
+        - {order_item_id: L2, mrp_at_order_inr: 120, unit_cost_inr: 50, gross_revenue_inr: 120, net_revenue_inr: 120, cogs_inr: 50, gross_margin_inr: 70}
+        # L3 is not expected: its order O_MISSING does not exist
