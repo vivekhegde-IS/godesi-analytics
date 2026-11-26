@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: erp
+    description: GoDesi ERP export (synthetic). Products, promotions, distributors, stores and offline (distributor) orders.
+    database: GODESI_RAW
+    schema: ERP
+    tables:
+      - name: products
+        description: Product master. 9 real GoDesi SKUs (from Open Food Facts) + 51 synthetic. Batch2 re-sends 12 products with new prices.
+      - name: promotions
+        description: Festival and channel promo codes with discount percentages.
+      - name: distributors
+        description: Distributors that supply kirana and modern-trade stores.
+      - name: stores
+        description: Retail stores, each served by one distributor.
+      - name: orders
+        description: Offline orders placed by stores through distributors.
+      - name: order_items
+        description: Line items of offline orders.

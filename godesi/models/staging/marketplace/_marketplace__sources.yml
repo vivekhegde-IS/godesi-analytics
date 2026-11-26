@@ -1,0 +1,13 @@
+
+version: 2
+
+sources:
+  - name: marketplace
+    description: Marketplace (Amazon, Flipkart) and quick-commerce (Blinkit, Zepto, Instamart) feeds (synthetic).
+    database: GODESI_RAW
+    schema: MARKETPLACE
+    tables:
+      - name: orders
+        description: Marketplace and quick-commerce orders. Quick-commerce timestamps use DD/MM/YYYY HH:MM; some rows are exact duplicates.
+      - name: order_items
+        description: Line items. Some prices arrive as text, e.g. 'Rs. 120.00'.
