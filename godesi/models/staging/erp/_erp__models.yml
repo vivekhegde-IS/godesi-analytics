@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: stg_erp__products
+    description: "Product master, typed. Grain: one row per sku_id (latest version; batch2 price updates win)."
+  - name: stg_erp__promotions
+    description: "Promo codes with dates, discount % and the channel they apply to. Grain: one row per promo_code."
+  - name: stg_erp__distributors
+    description: "Distributors that supply stores. Grain: one row per distributor_id."
+  - name: stg_erp__stores
+    description: "Kirana and modern-trade stores, each served by one distributor. Grain: one row per store_id."
+  - name: stg_erp__orders
+    description: "Offline orders placed by stores. Late status updates deduplicated. Grain: one row per order_id."
+  - name: stg_erp__order_items
+    description: "Lines of offline orders (cases of 6 to 48 units, trade price). Grain: one row per order_item_id."

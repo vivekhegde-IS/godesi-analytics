@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: stg_ecom__customers
+    description: "D2C customers. City spellings cleaned with the city_name_mapping seed (city_raw kept). Grain: one row per customer_id."
+  - name: stg_ecom__orders
+    description: "D2C website orders. Late status updates deduplicated. Grain: one row per order_id."
+  - name: stg_ecom__order_items
+    description: "Lines of D2C orders. Grain: one row per order_item_id."
+  - name: stg_ecom__returns
+    description: "Returns of delivered online order lines, with reason and refund. Grain: one row per return_id."

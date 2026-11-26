@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  - name: stg_marketplace__orders
+    description: "Marketplace and quick-commerce orders. Two timestamp formats parsed; exact duplicates and late updates removed. Grain: one row per order_id."
+  - name: stg_marketplace__order_items
+    description: "Marketplace and quick-commerce order lines. Text prices like 'Rs. 120.00' converted to numbers. Grain: one row per order_item_id."
