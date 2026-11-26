@@ -1,0 +1,8 @@
+platform,channel,channel_group,is_online
+amazon,marketplace,Online marketplace,true
+flipkart,marketplace,Online marketplace,true
+blinkit,quick_commerce,Quick commerce,true
+zepto,quick_commerce,Quick commerce,true
+instamart,quick_commerce,Quick commerce,true
+godesi.in,d2c,Direct to consumer,true
+distributor,offline,General and modern trade,false

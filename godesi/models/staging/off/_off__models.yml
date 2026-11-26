@@ -1,0 +1,5 @@
+version: 2
+
+models:
+  - name: stg_off__products
+    description: "Real Open Food Facts products sold in India (ODbL). About 35 of 211 columns kept; brands mapped with the brand_mapping seed; quantity parsed into net_quantity + quantity_unit (g or ml); en: prefixes removed; unknown Nutri-Score set to NULL. Grain: one row per barcode."

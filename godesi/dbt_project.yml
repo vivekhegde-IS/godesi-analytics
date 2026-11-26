@@ -43,3 +43,8 @@ models:
       +materialized: table
       +schema: marts
       +tags: ['marts']
+
+seeds:
+  godesi:
+    +quote_columns: false
+    +tags: ['seed']

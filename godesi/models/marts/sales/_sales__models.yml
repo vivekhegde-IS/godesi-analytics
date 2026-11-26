@@ -1,0 +1,9 @@
+version: 2
+
+models:
+  - name: mart_sales_daily
+    description: "Q1, Q4: orders, units, gross/net revenue, discount, COGS, margin and refunds per day, channel, platform and city (with region and festival flags). Cancelled orders excluded. Grain: one row per order_date, platform and city."
+  - name: mart_product_performance
+    description: "Q2: orders, units, net revenue, COGS, gross margin and returns per SKU per month. Grain: one row per order_month and sku_id."
+  - name: mart_channel_performance
+    description: "Q3: revenue share, AOV, discount %, gross margin % and return rate per channel per month. Grain: one row per order_month and channel."

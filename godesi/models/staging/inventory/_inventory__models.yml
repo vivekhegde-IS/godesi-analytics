@@ -1,0 +1,5 @@
+version: 2
+
+models:
+  - name: stg_inventory__inventory_daily
+    description: "End-of-day stock on hand. Grain: one row per snapshot_date, warehouse_id and sku_id."

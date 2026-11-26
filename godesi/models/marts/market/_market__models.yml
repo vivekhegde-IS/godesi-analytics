@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: dim_market_products
+    description: "All 26,293 real products sold in India (Open Food Facts) with cleaned brand, market segment, pack size, Nutri-Score and nutrition, plus is_godesi / is_competitor. Grain: one row per barcode."
+  - name: dim_brands
+    description: "Brands with product count, main segment, median sugar and Nutri-Score mix. Grain: one row per brand."
+  - name: mart_market_landscape
+    description: "Q8, Q9: products, median sugar, pack size and Nutri-Score mix per brand within each market segment, with segment crowding (products, brands) and brand rank. Grain: one row per market_segment and brand."
+  - name: mart_category_growth
+    description: "Q9: new products and brands listed per market segment per year, with a running total. Grain: one row per market_segment and listed_year."

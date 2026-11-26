@@ -1,0 +1,7 @@
+version: 2
+
+models:
+  - name: mart_customer_cohorts
+    description: "Q5: active customers, retention % and cumulative revenue per customer (LTV) by first-order cohort month and months since first order. Grain: one row per cohort_month and months_since_first_order."
+  - name: mart_promo_impact
+    description: "Q7: average daily online revenue during each promotion vs the 28 days before, redemptions and discount given. Grain: one row per promo_code."
