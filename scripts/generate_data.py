@@ -1,3 +1,4 @@
+
 """
 Generate synthetic GoDesi sales data (Jan 2024 to Dec 2025).
 
@@ -32,7 +33,7 @@ def save(df, name, batch="batch1"):
     folder = OUT / batch
     folder.mkdir(parents=True, exist_ok=True)
     df.to_csv(folder / f"{name}.csv", index=False)
-    print(f"  {batch}/{name}.csv".ljust(36), f"{len(df):>8,} rows")
+    print(f"  {batch}/{name}.csv".ljust(42), f"{len(df):>8,} rows")
 
 
 def price_ending_9(x):
@@ -262,6 +263,181 @@ def make_customers(n=30000):
     })
 
 
+# ---------------------------------------------------------------- C3: sales settings
+N_ORDERS = 80_000
+
+# channel -> (share of orders, platforms within the channel and their shares)
+CHANNELS = {
+    "marketplace":    (0.40, {"amazon": 0.55, "flipkart": 0.45}),
+    "quick_commerce": (0.25, {"blinkit": 0.45, "zepto": 0.35, "instamart": 0.20}),
+    "d2c":            (0.15, {"godesi.in": 1.0}),
+    "offline":        (0.20, {"distributor": 1.0}),
+}
+# how much busier the days just before each festival are (1.0 = normal day)
+FESTIVAL_BOOST = {"DIWALI": 2.6, "RAKHI": 2.0, "HOLI": 1.8, "NAVRATRI": 1.4, "GANESHA": 1.4,
+                  "SANKRANTI": 1.3, "UGADI": 1.3, "XMAS": 1.3, "INDEPENDENCE": 1.1, "REPUBLICDAY": 1.1}
+MONTH_FACTOR = {1: 1.0, 2: 0.95, 3: 1.05, 4: 1.0, 5: 0.95,
+                6: 0.85, 7: 0.80, 8: 0.85, 9: 0.90,          # monsoon dip
+                10: 1.15, 11: 1.15, 12: 1.10}
+
+
+def day_weights():
+    """One weight per day: growth x month x weekend x festival. Bigger weight = more orders."""
+    days = pd.date_range(START, END, freq="D")
+    growth = np.linspace(1.0, 1.6, len(days))                      # the business grows ~60% over 2 years
+    month = days.month.map(MONTH_FACTOR).to_numpy()
+    weekend = np.where(days.day_of_week >= 5, 1.15, 1.0)
+    festival = np.ones(len(days))
+    for name, dates in FESTIVALS.items():
+        for d in dates:
+            # the 10 days before a festival and the day itself get the boost
+            window = (days >= pd.Timestamp(d) - pd.Timedelta(days=10)) & (days <= pd.Timestamp(d))
+            festival[window] = np.maximum(festival[window], FESTIVAL_BOOST[name])
+    w = growth * month * weekend * festival
+    return days, w / w.sum(), festival
+
+
+# ---------------------------------------------------------------- C3: price changes
+def make_price_changes(products, n=12):
+    """12 products get a price rise once during the period (used for snapshots later)."""
+    chosen = products.sample(n, random_state=SEED)
+    change_day = random_dates(n, "2024-06-01", "2025-09-30")
+    return pd.DataFrame({
+        "sku_id": chosen["sku_id"].to_numpy(),
+        "old_mrp": chosen["mrp_inr"].to_numpy(),
+        "new_mrp": [price_ending_9(m * rng.uniform(1.08, 1.15)) for m in chosen["mrp_inr"]],
+        "changed_at": change_day,
+    })
+
+
+def mrp_on(sku_ids, dates, products, price_changes):
+    """The MRP that was valid for each (sku, date): new price after the change date, else the old one."""
+    mrp = pd.Series(sku_ids).map(products.set_index("sku_id")["mrp_inr"]).to_numpy(dtype=float)
+    pc = price_changes.set_index("sku_id")
+    for sku, row in pc.iterrows():
+        after = (np.asarray(sku_ids) == sku) & (np.asarray(dates) >= row["changed_at"])
+        mrp[after] = row["new_mrp"]
+    return mrp
+
+
+# ---------------------------------------------------------------- C3: orders
+def make_orders(customers, stores, promotions):
+    days, p_day, festival = day_weights()
+    n = N_ORDERS
+
+    # 1. when: pick a day by weight, then a time of day (busiest in the evening)
+    day_idx = rng.choice(len(days), size=n, p=p_day)
+    hour_p = np.array([1, 1, 1, 1, 1, 1, 2, 3, 4, 5, 6, 6, 7, 6, 5, 5, 6, 7, 8, 9, 9, 8, 5, 2], float)
+    hour = rng.choice(24, size=n, p=hour_p / hour_p.sum())
+    order_ts = (days[day_idx] + pd.to_timedelta(hour, unit="h")
+                + pd.to_timedelta(rng.integers(0, 3600, n), unit="s"))
+
+    # 2. which channel and platform
+    names = list(CHANNELS)
+    channel = rng.choice(names, size=n, p=[CHANNELS[c][0] for c in names])
+    platform = np.empty(n, dtype=object)
+    for c in names:
+        mask = channel == c
+        plats = list(CHANNELS[c][1])
+        platform[mask] = rng.choice(plats, size=mask.sum(), p=list(CHANNELS[c][1].values()))
+
+    # 3. who: online orders come from customers who had already signed up;
+    #    offline orders come from stores that were already onboarded
+    cust = customers.sort_values("signup_date").reset_index(drop=True)
+    cust_dates = pd.to_datetime(cust["signup_date"]).to_numpy()
+    st = stores.sort_values("onboarded_date").reset_index(drop=True)
+    store_dates = pd.to_datetime(st["onboarded_date"]).to_numpy()
+    order_day = days[day_idx].to_numpy()
+
+    online = channel != "offline"
+    n_cust_ok = np.searchsorted(cust_dates, order_day, side="right")    # how many customers existed that day
+    n_store_ok = np.searchsorted(store_dates, order_day, side="right")
+    customer_id = np.where(online,
+                           cust["customer_id"].to_numpy()[(rng.random(n) * np.maximum(n_cust_ok, 1)).astype(int)],
+                           None)
+    store_id = np.where(~online,
+                        st["store_id"].to_numpy()[(rng.random(n) * np.maximum(n_store_ok, 1)).astype(int)],
+                        None)
+
+    # 4. promo: ~35% of online orders use a promo that is running that day on that channel
+    promos = promotions.assign(start=pd.to_datetime(promotions["start_date"]),
+                               end=pd.to_datetime(promotions["end_date"]))
+    promo_code = np.full(n, None, dtype=object)
+    for i in np.flatnonzero(online & (rng.random(n) < 0.35)):
+        d, ch = order_day[i], channel[i]
+        ok = promos[(promos["start"] <= d) & (promos["end"] >= d)
+                    & promos["channel"].isin(["all", ch])]
+        if len(ok):
+            promo_code[i] = ok["promo_code"].iloc[rng.integers(len(ok))]
+
+    # 5. status: most are delivered; recent orders are still in progress
+    age_days = (END - pd.to_datetime(order_day)).days.to_numpy()
+    status = rng.choice(["delivered", "cancelled"], size=n, p=[0.94, 0.06]).astype(object)
+    status[(age_days <= 4) & (status == "delivered")] = "shipped"
+    status[age_days <= 1] = "placed"
+    hours_later = np.select([status == "delivered", status == "shipped", status == "cancelled"],
+                            [rng.integers(24, 120, n), rng.integers(6, 24, n), rng.integers(1, 12, n)], 0)
+    updated_at = order_ts + pd.to_timedelta(hours_later, unit="h")
+
+    df = pd.DataFrame({"order_ts": order_ts, "channel": channel, "platform": platform,
+                       "customer_id": customer_id, "store_id": store_id, "status": status,
+                       "promo_code": promo_code, "updated_at": updated_at})
+    df = df.sort_values("order_ts").reset_index(drop=True)
+    df.insert(0, "order_id", [f"ORD-{i:07d}" for i in range(1, n + 1)])
+    df.attrs["festival_by_day"] = pd.Series(festival, index=days)
+    return df
+
+
+# ---------------------------------------------------------------- C3: order items
+def sku_weights(products, day, festive):
+    """Probability of each SKU on a given day: only launched products; real ones sell more;
+    mithai sells much more in festival weeks."""
+    launched = pd.to_datetime(products["launch_date"]).to_numpy() <= np.datetime64(day)
+    w = np.where(products["is_real_product"], 3.0, 1.0)
+    if festive > 1.2:
+        w = w * np.where(products["category"] == "Mithai", festive, 1.0)
+    w = w * launched
+    return w / w.sum()
+
+
+def make_order_items(orders, products, promotions, price_changes):
+    # 1. how many lines per order: 1 to 5 (average about 2.5)
+    n_lines = np.minimum(1 + rng.poisson(1.5, len(orders)), 5)
+    items = orders.loc[orders.index.repeat(n_lines),
+                       ["order_id", "order_ts", "channel", "promo_code"]].reset_index(drop=True)
+    items["day"] = items["order_ts"].dt.normalize()
+
+    # 2. which product: sample per day, using that day's SKU probabilities
+    festival = orders.attrs["festival_by_day"]
+    sku = np.empty(len(items), dtype=object)
+    sku_ids = products["sku_id"].to_numpy()
+    for day, idx in items.groupby("day").indices.items():
+        p = sku_weights(products, day, festival.get(day, 1.0))
+        sku[idx] = rng.choice(sku_ids, size=len(idx), p=p)
+    items["sku_id"] = sku
+
+    # 3. quantity: shoppers buy 1-3 packs; stores order cases of 6 to 48
+    offline = (items["channel"] == "offline").to_numpy()
+    qty = np.where(offline, rng.choice([6, 12, 24, 36, 48], len(items)),
+                   rng.choice([1, 2, 3], len(items), p=[0.7, 0.2, 0.1]))
+
+    # 4. price: MRP valid on that day; stores pay the trade price (~70% of MRP);
+    #    marketplaces sometimes sell a little below MRP
+    mrp = mrp_on(items["sku_id"], items["day"], products, price_changes)
+    factor = np.where(offline, 0.70,
+                      np.where(items["channel"] == "marketplace", rng.choice([1.0, 0.95, 0.9], len(items)), 1.0))
+    unit_price = np.round(mrp * factor, 2)
+
+    # 5. discount from the order's promo code
+    pct = items["promo_code"].map(promotions.set_index("promo_code")["discount_pct"]).fillna(0).to_numpy()
+    discount = np.round(unit_price * qty * pct / 100, 2)
+
+    out = pd.DataFrame({"order_id": items["order_id"], "sku_id": items["sku_id"], "qty": qty,
+                        "unit_price_inr": unit_price, "discount_inr": discount})
+    out.insert(0, "order_item_id", [f"OI-{i:08d}" for i in range(1, len(out) + 1)])
+    return out
+
+
 # ---------------------------------------------------------------- main
 def main():
     print("Generating GoDesi synthetic data (seed =", SEED, ")")
@@ -279,6 +455,22 @@ def main():
 
     customers = make_customers()
     save(customers, "customers")
+
+    # sales: orders and their lines, split by the system they come from
+    price_changes = make_price_changes(products)
+    orders = make_orders(customers, stores, promotions)
+    items = make_order_items(orders, products, promotions, price_changes)
+
+    ts_cols = ["order_ts", "updated_at"]
+    orders_out = orders.copy()
+    for c in ts_cols:
+        orders_out[c] = orders_out[c].dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    source = {"ecom": ["d2c"], "marketplace": ["marketplace", "quick_commerce"], "erp": ["offline"]}
+    for system, channels in source.items():
+        o = orders_out[orders_out["channel"].isin(channels)]
+        save(o, f"{system}_orders")
+        save(items[items["order_id"].isin(o["order_id"])], f"{system}_order_items")
     print("Done.")
 
 
