@@ -1,4 +1,3 @@
-
 """
 Generate synthetic GoDesi sales data (Jan 2024 to Dec 2025).
 
@@ -384,7 +383,6 @@ def make_orders(customers, stores, promotions):
                        "promo_code": promo_code, "updated_at": updated_at})
     df = df.sort_values("order_ts").reset_index(drop=True)
     df.insert(0, "order_id", [f"ORD-{i:07d}" for i in range(1, n + 1)])
-    df.attrs["festival_by_day"] = pd.Series(festival, index=days)
     return df
 
 
@@ -408,7 +406,8 @@ def make_order_items(orders, products, promotions, price_changes):
     items["day"] = items["order_ts"].dt.normalize()
 
     # 2. which product: sample per day, using that day's SKU probabilities
-    festival = orders.attrs["festival_by_day"]
+    days, _, fest = day_weights()                 # festival strength per day (no randomness)
+    festival = pd.Series(fest, index=days)
     sku = np.empty(len(items), dtype=object)
     sku_ids = products["sku_id"].to_numpy()
     for day, idx in items.groupby("day").indices.items():
@@ -438,41 +437,192 @@ def make_order_items(orders, products, promotions, price_changes):
     return out
 
 
+# ---------------------------------------------------------------- C4: returns (~3,000)
+RETURN_REASONS = {"damaged_in_transit": 0.35, "taste_not_liked": 0.20, "expired_or_stale": 0.15,
+                  "wrong_item": 0.15, "late_delivery": 0.15}
+
+
+def make_returns(orders, items, n=3000):
+    """Returns come only from delivered online orders, 12 hours to 10 days after delivery."""
+    delivered = orders[(orders["status"] == "delivered") & (orders["channel"] != "offline")]
+    picked = (items[items["order_id"].isin(delivered["order_id"])]
+              .sample(n, random_state=SEED)
+              .merge(delivered[["order_id", "updated_at"]], on="order_id"))
+    return_ts = picked["updated_at"] + pd.to_timedelta(rng.integers(12, 240, n), unit="h")
+    line_value = picked["qty"] * picked["unit_price_inr"] - picked["discount_inr"]
+    refund = np.where(rng.random(n) < 0.8, line_value, line_value * 0.5).round(2)   # 20% partial refunds
+    df = pd.DataFrame({"order_item_id": picked["order_item_id"],
+                       "return_ts": return_ts,
+                       "reason": rng.choice(list(RETURN_REASONS), n, p=list(RETURN_REASONS.values())),
+                       "refund_inr": refund})
+    df = df[df["return_ts"] < END + pd.Timedelta(days=1)]        # no returns after the period
+    df = df.sort_values("return_ts").reset_index(drop=True)
+    df.insert(0, "return_id", [f"R-{i:06d}" for i in range(1, len(df) + 1)])
+    return df
+
+
+# ---------------------------------------------------------------- C4: inventory (daily snapshots)
+WAREHOUSES = {"WH-BLR": 0.50, "WH-HYD": 0.25, "WH-DEL": 0.25}   # share of demand each one serves
+LEAD_DAYS = 5                                                   # days from reorder to arrival
+
+
+def make_inventory(orders, items, products):
+    """Simulate stock per warehouse and SKU: sales take stock out, reorders bring it back.
+    Big festival spikes can empty the shelves (stock-outs), as in real life."""
+    days = pd.date_range(START, END, freq="D")
+    skus = products["sku_id"].to_numpy()
+    sold = items.merge(orders[["order_id", "order_ts", "status"]], on="order_id")
+    sold = sold[sold["status"] != "cancelled"]
+    sold = sold.assign(day=sold["order_ts"].dt.normalize())
+    demand = (sold.pivot_table(index="day", columns="sku_id", values="qty", aggfunc="sum")
+                  .reindex(index=days, columns=skus).fillna(0).to_numpy())
+    launched = pd.to_datetime(products["launch_date"]).to_numpy()
+
+    frames = []
+    for wh, share in WAREHOUSES.items():
+        d = demand * share
+        avg = np.maximum(d.mean(axis=0), 1.0)                 # average units per day per SKU
+        on_hand = np.round(avg * 30)                          # start with ~30 days of stock
+        incoming = np.zeros((len(days) + LEAD_DAYS + 1, len(skus)))
+        waiting = np.zeros(len(skus), dtype=bool)             # a reorder is already on its way
+        for t, day in enumerate(days):
+            arrived = incoming[t] > 0
+            on_hand += incoming[t]
+            waiting[arrived] = False
+            on_hand = np.maximum(on_hand - np.round(d[t]), 0)  # cannot sell stock we do not have
+            reorder = (on_hand < avg * 7) & ~waiting           # below 7 days of cover -> reorder
+            incoming[t + LEAD_DAYS] += reorder * np.round(avg * rng.uniform(20, 35, len(skus)))
+            waiting |= reorder
+            live = launched <= np.datetime64(day)
+            frames.append(pd.DataFrame({"snapshot_date": day.strftime("%Y-%m-%d"), "warehouse_id": wh,
+                                        "sku_id": skus[live], "on_hand_units": on_hand[live].astype(int)}))
+    return pd.concat(frames, ignore_index=True)
+
+
+# ---------------------------------------------------------------- C4: deliberate mess
+# Real source systems are messy. These problems are added ON PURPOSE so that the
+# dbt staging models and tests (Phases 4 and 5) have real work to do.
+CITY_VARIANTS = {"Bengaluru": ["bengaluru", "Bangalore", "BENGALURU", "Bengaluru "],
+                 "Mumbai": ["Bombay", "mumbai"], "Chennai": ["Madras", "chennai"],
+                 "New Delhi": ["Delhi", "new delhi"], "Gurugram": ["Gurgaon"],
+                 "Mysuru": ["Mysore"], "Mangaluru": ["Mangalore"], "Kolkata": ["Calcutta"]}
+
+
+def add_mess(customers, orders_txt, items):
+    c = customers.copy()
+    # 1. 12% of customers have a different spelling of their city
+    for i in np.flatnonzero(rng.random(len(c)) < 0.12):
+        options = CITY_VARIANTS.get(c.at[i, "city"])
+        if options:
+            c.at[i, "city"] = rng.choice(options)
+    # 2. 3% of customers have no pincode
+    c.loc[rng.random(len(c)) < 0.03, "pincode"] = None
+
+    o = orders_txt.copy()
+    # 3. quick-commerce feeds send timestamps as DD/MM/YYYY HH:MM (a second format)
+    qc = o["channel"] == "quick_commerce"
+    for col in ("order_ts", "updated_at"):
+        o.loc[qc, col] = pd.to_datetime(o.loc[qc, col]).dt.strftime("%d/%m/%Y %H:%M")
+    # 4. about 0.3% of marketplace orders arrive twice (exact duplicate rows)
+    mkt = o[o["channel"].isin(["marketplace", "quick_commerce"])]
+    dupes = mkt.sample(frac=0.003, random_state=SEED)
+    o = pd.concat([o, dupes]).sort_values("order_id", kind="stable").reset_index(drop=True)
+
+    it = items.copy()
+    # 5. 2% of marketplace prices arrive as text, e.g. "Rs. 120.00"
+    mkt_lines = it["order_id"].isin(mkt["order_id"]).to_numpy() & (rng.random(len(it)) < 0.02)
+    it["unit_price_inr"] = it["unit_price_inr"].astype(object)
+    it.loc[mkt_lines, "unit_price_inr"] = it.loc[mkt_lines, "unit_price_inr"].map("Rs. {:.2f}".format)
+    return c, o, it
+
+
+# ---------------------------------------------------------------- C4: batch 2 (late-arriving data)
+CUTOFF = pd.Timestamp("2025-12-01")      # batch1 = before December 2025, batch2 = December
+
+
+def split_orders(orders):
+    """batch1: orders before the cutoff, as they looked ON the cutoff day.
+    batch2: December orders, plus late updates: November orders whose final
+    status (delivered / cancelled) only happened after the cutoff."""
+    old = orders[orders["order_ts"] < CUTOFF]
+    new = orders[orders["order_ts"] >= CUTOFF]
+    late = old[old["updated_at"] >= CUTOFF]                    # final status came after the cutoff
+
+    b1 = old.copy()
+    in_flight = b1["order_id"].isin(late["order_id"])
+    b1.loc[in_flight, "status"] = np.where(b1.loc[in_flight, "status"] == "delivered", "shipped", "placed")
+    b1.loc[in_flight, "updated_at"] = b1.loc[in_flight, "order_ts"] + pd.Timedelta(hours=2)
+
+    b2 = pd.concat([new, late]).sort_values("order_ts").reset_index(drop=True)
+    return b1, b2, len(late)
+
+
+def to_text(df, cols=("order_ts", "updated_at")):
+    out = df.copy()
+    for c in cols:
+        out[c] = out[c].dt.strftime("%Y-%m-%d %H:%M:%S")
+    return out
+
+
 # ---------------------------------------------------------------- main
 def main():
     print("Generating GoDesi synthetic data (seed =", SEED, ")")
+
+    # 1. build everything in memory (clean)
     products = make_products()
-    save(products, "products")
-
     promotions = make_promotions()
-    save(promotions, "promotions")
-
     distributors = make_distributors()
-    save(distributors, "distributors")
-
     stores = make_stores(distributors)
-    save(stores, "stores")
-
     customers = make_customers()
-    save(customers, "customers")
-
-    # sales: orders and their lines, split by the system they come from
     price_changes = make_price_changes(products)
     orders = make_orders(customers, stores, promotions)
     items = make_order_items(orders, products, promotions, price_changes)
+    returns = make_returns(orders, items)
+    inventory = make_inventory(orders, items, products)
 
-    ts_cols = ["order_ts", "updated_at"]
-    orders_out = orders.copy()
-    for c in ts_cols:
-        orders_out[c] = orders_out[c].dt.strftime("%Y-%m-%d %H:%M:%S")
+    # 2. split orders into batch1 (until 30 Nov 2025) and batch2 (December + late updates)
+    orders_b1, orders_b2, n_late = split_orders(orders)
+    items_b1 = items[items["order_id"].isin(orders_b1["order_id"])]
+    items_b2 = items[~items["order_id"].isin(orders_b1["order_id"])]
+
+    # 3. add the deliberate mess (same rules for both batches)
+    customers_m, orders_b1_m, items_b1_m = add_mess(customers, to_text(orders_b1), items_b1)
+    _, orders_b2_m, items_b2_m = add_mess(customers, to_text(orders_b2), items_b2)
+
+    # 4. write batch1: reference data + everything before the cutoff
+    signed_up = pd.to_datetime(customers_m["signup_date"]) < CUTOFF
+    save(products, "products")                                   # prices as at the start
+    save(promotions, "promotions")
+    save(distributors, "distributors")
+    save(stores, "stores")
+    save(customers_m[signed_up], "customers")
+    save(returns[returns["return_ts"] < CUTOFF].assign(
+        return_ts=lambda d: d["return_ts"].dt.strftime("%Y-%m-%d %H:%M:%S")), "ecom_returns")
+    save(inventory[inventory["snapshot_date"] < f"{CUTOFF:%Y-%m-%d}"], "inventory_daily")
 
     source = {"ecom": ["d2c"], "marketplace": ["marketplace", "quick_commerce"], "erp": ["offline"]}
     for system, channels in source.items():
-        o = orders_out[orders_out["channel"].isin(channels)]
+        o = orders_b1_m[orders_b1_m["channel"].isin(channels)]
         save(o, f"{system}_orders")
-        save(items[items["order_id"].isin(o["order_id"])], f"{system}_order_items")
-    print("Done.")
+        save(items_b1_m[items_b1_m["order_id"].isin(o["order_id"])], f"{system}_order_items")
+
+    # 5. write batch2: what arrives in December
+    changed = products.merge(price_changes[["sku_id", "new_mrp", "changed_at"]], on="sku_id")
+    changed = changed.assign(mrp_inr=changed["new_mrp"],
+                             updated_at=changed["changed_at"].dt.strftime("%Y-%m-%d 09:00:00"))
+    save(changed[products.columns], "products", "batch2")        # the 12 price changes
+    save(customers_m[~signed_up], "customers", "batch2")
+    save(returns[returns["return_ts"] >= CUTOFF].assign(
+        return_ts=lambda d: d["return_ts"].dt.strftime("%Y-%m-%d %H:%M:%S")), "ecom_returns", "batch2")
+    save(inventory[inventory["snapshot_date"] >= f"{CUTOFF:%Y-%m-%d}"], "inventory_daily", "batch2")
+    for system, channels in source.items():
+        o = orders_b2_m[orders_b2_m["channel"].isin(channels)]
+        save(o, f"{system}_orders", "batch2")
+        save(items_b2_m[items_b2_m["order_id"].isin(o["order_id"])], f"{system}_order_items", "batch2")
+
+    print(f"Done. {n_late} November orders get a late status update in batch2.")
 
 
 if __name__ == "__main__":
     main()
+
