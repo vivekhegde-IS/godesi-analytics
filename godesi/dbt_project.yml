@@ -48,3 +48,7 @@ seeds:
   godesi:
     +quote_columns: false
     +tags: ['seed']
+    
+data_tests:
+  godesi:
+    +schema: test_failures   # tables of failing rows (only for tests with store_failures)

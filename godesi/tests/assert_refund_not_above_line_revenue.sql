@@ -1,3 +1,5 @@
+{{ config(store_failures=true) }}
+
 -- A refund can never be larger than what the customer paid for that line.
 -- If it were, "revenue after returns" could go negative and return rates would be overstated.
 

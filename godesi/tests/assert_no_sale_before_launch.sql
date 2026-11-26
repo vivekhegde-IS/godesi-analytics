@@ -1,3 +1,5 @@
+{{ config(store_failures=true) }}
+
 -- A product cannot be sold before its launch date.
 -- If this failed, new-launch performance (Q3) would include impossible early sales.
 

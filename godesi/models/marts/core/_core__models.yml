@@ -183,7 +183,10 @@ models:
       arguments:
         expression: unit_price_inr <= mrp_at_order_inr
       config:
-        severity: warn
+        severity: error
+        warn_if: '>0'
+        error_if: '>2000'
+        store_failures: true
   - dbt_utils.expression_is_true:
       arguments:
         expression: gross_margin_inr = net_revenue_inr - cogs_inr

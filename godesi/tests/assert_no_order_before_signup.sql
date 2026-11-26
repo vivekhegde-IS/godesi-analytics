@@ -1,3 +1,5 @@
+{{ config(store_failures=true) }}
+
 -- A customer cannot order before they signed up.
 -- If this failed, cohorts and "days to first order" would be wrong (negative days,
 -- customers counted in a cohort before they existed).

@@ -1,3 +1,5 @@
+{{ config(store_failures=true) }}
+
 -- Net revenue (cancelled orders excluded) must be the same in the line fact, the order
 -- fact and the daily sales mart. If a join fans out or drops rows, the totals split and
 -- the dashboard shows different revenue on different pages.

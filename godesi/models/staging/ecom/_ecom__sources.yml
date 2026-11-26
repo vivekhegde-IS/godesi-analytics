@@ -1,16 +1,26 @@
+# Freshness: dbt source freshness warns if the newest _loaded_at is older than 24 hours
+# and errors after 72 hours (the feeds are expected every day).
 version: 2
-
 sources:
-  - name: ecom
-    description: GoDesi D2C website (godesi.in) export (synthetic).
-    database: GODESI_RAW
-    schema: ECOM
-    tables:
-      - name: customers
-        description: Website customers. Contains messy city spellings and some null pincodes on purpose.
-      - name: orders
-        description: D2C orders. Batch2 re-sends late status updates (shipped -> delivered).
-      - name: order_items
-        description: Line items of D2C orders.
-      - name: returns
-        description: Returns of delivered online order items, with reason and refund.
+- name: ecom
+  description: GoDesi D2C website (godesi.in) export (synthetic).
+  database: GODESI_RAW
+  schema: ECOM
+  config:
+    loaded_at_field: _loaded_at
+    freshness:
+      warn_after:
+        count: 24
+        period: hour
+      error_after:
+        count: 72
+        period: hour
+  tables:
+  - name: customers
+    description: Website customers. Contains messy city spellings and some null pincodes on purpose.
+  - name: orders
+    description: D2C orders. Batch2 re-sends late status updates (shipped -> delivered).
+  - name: order_items
+    description: Line items of D2C orders.
+  - name: returns
+    description: Returns of delivered online order items, with reason and refund.

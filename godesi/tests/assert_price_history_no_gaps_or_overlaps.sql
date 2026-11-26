@@ -1,3 +1,5 @@
+{{ config(store_failures=true) }}
+
 -- SCD2 price ranges must chain perfectly: each version ends exactly when the next one
 -- starts, and only the last version is open (valid_to is null).
 -- A gap means some orders find no price; an overlap means some orders find two prices
