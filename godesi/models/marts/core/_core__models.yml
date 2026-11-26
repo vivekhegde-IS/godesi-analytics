@@ -13,3 +13,7 @@ models:
     description: "Cities with state and region (South, West, North, East). Grain: one row per city."
   - name: dim_stores
     description: "Kirana and modern-trade stores with their distributor. Grain: one row per store_id."
+  - name: fct_order_items
+    description: "Fact table at the centre of the star schema: revenue, discount, COGS, margin and returns per order line, with keys to every dimension. Incremental (merge on order_item_id). Grain: one row per order_item_id."
+  - name: fct_orders
+    description: "Order totals summed from fct_order_items, with status, returns, promo and first-order flags. Grain: one row per order_id."

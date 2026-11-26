@@ -1,0 +1,5 @@
+version: 2
+
+models:
+  - name: fct_inventory_daily
+    description: "End-of-day stock per warehouse and SKU, with stock-out flag and network days of cover (Q6). Grain: one row per snapshot_date, warehouse_id and sku_id."
