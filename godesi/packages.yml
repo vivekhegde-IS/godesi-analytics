@@ -1,0 +1,10 @@
+# dbt packages for the GoDesi project
+#
+# dbt_utils is installed straight from GitHub (git), because codeload.github.com,
+# which the dbt package hub uses for downloads, is blocked on this network.
+# codegen and dbt_expectations are skipped for now: add them back from the
+# dbt hub when dbt deps can reach codeload.github.com.
+
+packages:
+  - git: "https://github.com/dbt-labs/dbt-utils.git"
+    revision: "1.4.1"
