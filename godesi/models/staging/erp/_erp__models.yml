@@ -1,6 +1,8 @@
 version: 2
 
 models:
+  - name: base_erp__products
+    description: "Every version of every product with proper types (72 rows = 60 originals + 12 price changes). Grain: one row per sku_id per version."
   - name: stg_erp__products
     description: "Product master, typed. Grain: one row per sku_id (latest version; batch2 price updates win)."
   - name: stg_erp__promotions

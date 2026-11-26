@@ -1,0 +1,15 @@
+# Snapshot of the product master (SCD Type 2, recorded by dbt itself).
+# Each `dbt snapshot` run compares stg_erp__products with what was saved before.
+# When a product's updated_at is newer, the old row is closed (dbt_valid_to is set)
+# and a new row is added. It records changes from its FIRST run onward, so the
+# price changes that happened before that are rebuilt in int_products__price_history.
+
+snapshots:
+  - name: snap_products
+    relation: ref('stg_erp__products')
+    description: "Product master history captured by dbt snapshot. Grain: one row per sku_id per recorded version."
+    config:
+      schema: snapshots          # prod: SNAPSHOTS schema; dev: your sandbox (generate_schema_name)
+      unique_key: sku_id
+      strategy: timestamp
+      updated_at: updated_at

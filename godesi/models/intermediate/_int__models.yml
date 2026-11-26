@@ -1,0 +1,5 @@
+version: 2
+
+models:
+  - name: int_products__price_history
+    description: "Every price version of every product (SCD Type 2) rebuilt from the versions kept in RAW. Grain: one row per sku_id per version. valid_to is NULL for the current version."
