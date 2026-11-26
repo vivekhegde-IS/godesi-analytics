@@ -1,4 +1,3 @@
-
 """
 Generate synthetic GoDesi sales data (Jan 2024 to Dec 2025).
 
@@ -116,11 +115,170 @@ def make_products():
     return df
 
 
+# ---------------------------------------------------------------- C2: shared reference data
+# Festival dates (reused in C3 for seasonality). Diwali = Lakshmi Puja day.
+FESTIVALS = {
+    "SANKRANTI":    ["2024-01-15", "2025-01-14"],
+    "REPUBLICDAY":  ["2024-01-26", "2025-01-26"],
+    "HOLI":         ["2024-03-25", "2025-03-14"],
+    "UGADI":        ["2024-04-09", "2025-03-30"],
+    "INDEPENDENCE": ["2024-08-15", "2025-08-15"],
+    "RAKHI":        ["2024-08-19", "2025-08-09"],
+    "GANESHA":      ["2024-09-07", "2025-08-27"],
+    "NAVRATRI":     ["2024-10-03", "2025-09-22"],
+    "DIWALI":       ["2024-10-31", "2025-10-20"],
+    "XMAS":         ["2024-12-25", "2025-12-25"],
+}
+
+# Cities GoDesi sells in: (city, state, pincode prefix, weight).
+# Weighted to the South, and Karnataka most of all, since GoDesi is a Bengaluru brand.
+CITIES = [
+    ("Bengaluru", "Karnataka", "560", 22), ("Mysuru", "Karnataka", "570", 5),
+    ("Hubballi", "Karnataka", "580", 3), ("Mangaluru", "Karnataka", "575", 3),
+    ("Chennai", "Tamil Nadu", "600", 9), ("Coimbatore", "Tamil Nadu", "641", 4),
+    ("Hyderabad", "Telangana", "500", 9), ("Kochi", "Kerala", "682", 4),
+    ("Thiruvananthapuram", "Kerala", "695", 2), ("Mumbai", "Maharashtra", "400", 9),
+    ("Pune", "Maharashtra", "411", 6), ("New Delhi", "Delhi", "110", 8),
+    ("Gurugram", "Haryana", "122", 3), ("Ahmedabad", "Gujarat", "380", 4),
+    ("Kolkata", "West Bengal", "700", 4), ("Jaipur", "Rajasthan", "302", 3),
+    ("Lucknow", "Uttar Pradesh", "226", 2),
+]
+CITY_DF = pd.DataFrame(CITIES, columns=["city", "state", "pin_prefix", "weight"])
+CITY_P = (CITY_DF["weight"] / CITY_DF["weight"].sum()).to_numpy()
+PIN_PREFIX = dict(zip(CITY_DF["city"], CITY_DF["pin_prefix"]))
+
+
+def pick_cities(n):
+    """Pick n cities by weight; return a DataFrame with city, state and a matching pincode."""
+    idx = rng.choice(len(CITY_DF), size=n, p=CITY_P)
+    df = CITY_DF.iloc[idx][["city", "state"]].reset_index(drop=True)
+    df["pincode"] = make_pincodes(df["city"])
+    return df
+
+
+def make_pincodes(cities):
+    """A 6-digit pincode that starts with the city's real prefix, e.g. Bengaluru -> 560xxx."""
+    tail = pd.Series(rng.integers(1, 100, len(cities))).map("{:03d}".format)
+    return cities.map(PIN_PREFIX).reset_index(drop=True) + tail
+
+
+def random_dates(n, start, end):
+    """n random dates between start and end (inclusive)."""
+    days = (pd.Timestamp(end) - pd.Timestamp(start)).days
+    return pd.Timestamp(start) + pd.to_timedelta(rng.integers(0, days + 1, n), unit="D")
+
+
+# ---------------------------------------------------------------- C2: promotions (30)
+def make_promotions():
+    rows = []
+    # 20 festival promos: start 7 days before the festival, end the day after it
+    for name, dates in FESTIVALS.items():
+        for d in dates:
+            d = pd.Timestamp(d)
+            big = name in ("DIWALI", "RAKHI", "HOLI")
+            rows.append(dict(promo_code=f"{name}{d:%y}",
+                             promo_name=f"{name.title()} {d.year} offer",
+                             start_date=d - pd.Timedelta(days=7),
+                             end_date=d + pd.Timedelta(days=1),
+                             discount_pct=int(rng.choice([15, 20, 25] if big else [5, 10])),
+                             channel="all"))
+    # 10 non-festival promos: (code, name, start, end, discount %, channel)
+    others = [("WELCOME10",  "First order discount",    "2024-01-01", "2025-12-31", 10, "d2c"),
+              ("FREESHIP",   "Free shipping above 499", "2024-01-01", "2025-12-31",  5, "d2c"),
+              ("MEGASALE24", "Marketplace mega sale",   "2024-09-27", "2024-10-06", 20, "marketplace"),
+              ("MEGASALE25", "Marketplace mega sale",   "2025-09-23", "2025-10-02", 20, "marketplace"),
+              ("SUMMER24",   "Summer sale",             "2024-07-20", "2024-07-22", 15, "marketplace"),
+              ("SUMMER25",   "Summer sale",             "2025-07-12", "2025-07-14", 15, "marketplace"),
+              ("MONSOON24",  "Monsoon munchies",        "2024-07-01", "2024-07-31", 10, "quick_commerce"),
+              ("MONSOON25",  "Monsoon munchies",        "2025-07-01", "2025-07-31", 10, "quick_commerce"),
+              ("NEWYEAR25",  "New year treat",          "2024-12-28", "2025-01-02", 10, "all"),
+              ("NEWYEAR26",  "New year treat",          "2025-12-28", "2025-12-31", 10, "all")]
+    for code, nm, s, e, pct, ch in others:
+        rows.append(dict(promo_code=code, promo_name=nm, start_date=pd.Timestamp(s),
+                         end_date=pd.Timestamp(e), discount_pct=pct, channel=ch))
+    df = pd.DataFrame(rows)
+    for c in ("start_date", "end_date"):
+        df[c] = df[c].dt.strftime("%Y-%m-%d")
+    return df
+
+
+# ---------------------------------------------------------------- C2: distributors (40)
+def make_distributors(n=40):
+    loc = pick_cities(n)
+    suffix = rng.choice(["Traders", "Distributors", "Agencies", "Enterprises", "Foods"], n)
+    return pd.DataFrame({
+        "distributor_id": [f"D-{i:03d}" for i in range(1, n + 1)],
+        "distributor_name": [f"{fake.last_name()} {s}" for s in suffix],
+        "city": loc["city"],
+        "state": loc["state"],
+        # most joined before 2024; some join during the period (network growth)
+        "onboarded_date": random_dates(n, "2019-01-01", "2025-06-30").strftime("%Y-%m-%d"),
+    })
+
+
+# ---------------------------------------------------------------- C2: stores (2,000)
+def make_stores(distributors, n=2000):
+    # each store is served by one distributor and sits in that distributor's city
+    d = distributors.iloc[rng.integers(0, len(distributors), n)].reset_index(drop=True)
+    kind = rng.choice(["kirana", "modern_trade"], n, p=[0.8, 0.2])
+    words = {"kirana": ["General Stores", "Kirana", "Provision Store", "Departmental Store"],
+             "modern_trade": ["Supermarket", "Mart", "Fresh", "Hypermarket"]}
+    # a store joins 0 to 400 days after its distributor, never after the period ends
+    onboard = pd.to_datetime(d["onboarded_date"]) + pd.to_timedelta(rng.integers(0, 400, n), unit="D")
+    return pd.DataFrame({
+        "store_id": [f"S-{i:05d}" for i in range(1, n + 1)],
+        "distributor_id": d["distributor_id"],
+        "store_name": [f"{fake.last_name()} {rng.choice(words[k])}" for k in kind],
+        "store_type": kind,
+        "city": d["city"],
+        "state": d["state"],
+        "pincode": make_pincodes(d["city"]),
+        "onboarded_date": onboard.clip(upper=END).dt.strftime("%Y-%m-%d"),
+    })
+
+
+# ---------------------------------------------------------------- C2: customers (30,000)
+def make_customers(n=30000):
+    loc = pick_cities(n)
+    # sign-ups grow over time: the square root puts more of them later in the period
+    first_day = pd.Timestamp("2023-06-01")
+    span = (END - first_day).days
+    signup = first_day + pd.to_timedelta((np.sqrt(rng.random(n)) * span).astype(int), unit="D")
+    first = [fake.first_name() for _ in range(n)]
+    last = [fake.last_name() for _ in range(n)]
+    return pd.DataFrame({
+        "customer_id": [f"C-{i:06d}" for i in range(1, n + 1)],
+        "first_name": first,
+        "last_name": last,
+        # example.com is reserved for examples, so these can never be real addresses
+        "email": [f"{f.lower()}.{l.lower()}{i}@example.com" for i, (f, l) in enumerate(zip(first, last))],
+        "signup_date": signup.strftime("%Y-%m-%d"),
+        "city": loc["city"],
+        "state": loc["state"],
+        "pincode": loc["pincode"],
+        "acquisition_source": rng.choice(
+            ["instagram", "google_ads", "organic", "referral", "influencer", "marketplace_insert"],
+            n, p=[0.28, 0.20, 0.22, 0.12, 0.10, 0.08]),
+    })
+
+
 # ---------------------------------------------------------------- main
 def main():
     print("Generating GoDesi synthetic data (seed =", SEED, ")")
     products = make_products()
     save(products, "products")
+
+    promotions = make_promotions()
+    save(promotions, "promotions")
+
+    distributors = make_distributors()
+    save(distributors, "distributors")
+
+    stores = make_stores(distributors)
+    save(stores, "stores")
+
+    customers = make_customers()
+    save(customers, "customers")
     print("Done.")
 
 
