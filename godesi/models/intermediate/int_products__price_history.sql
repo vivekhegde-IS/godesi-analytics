@@ -12,6 +12,7 @@ with versions as (
         product_name,
         mrp_inr,
         cost_inr,
+        launch_date,
         updated_at,
         _source_file
     from {{ ref('base_erp__products') }}
@@ -26,7 +27,13 @@ history as (
         mrp_inr,
         cost_inr,
         row_number() over (partition by sku_id order by updated_at)       as version_number,
-        updated_at                                                        as valid_from,
+        -- the first version is valid from the start of the launch day: launch-day orders placed
+        -- before 09:00 (the time on updated_at) must still find a price
+        iff(
+            row_number() over (partition by sku_id order by updated_at) = 1,
+            least(updated_at, launch_date::timestamp_ntz),
+            updated_at
+        )                                                                 as valid_from,
         lead(updated_at) over (partition by sku_id order by updated_at)   as valid_to,
         _source_file
     from versions
