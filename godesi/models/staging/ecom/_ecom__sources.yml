@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: ecom
+    description: GoDesi D2C website (godesi.in) export (synthetic).
+    database: GODESI_RAW
+    schema: ECOM
+    tables:
+      - name: customers
+        description: Website customers. Contains messy city spellings and some null pincodes on purpose.
+      - name: orders
+        description: D2C orders. Batch2 re-sends late status updates (shipped -> delivered).
+      - name: order_items
+        description: Line items of D2C orders.
+      - name: returns
+        description: Returns of delivered online order items, with reason and refund.

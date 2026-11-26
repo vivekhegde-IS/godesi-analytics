@@ -1,0 +1,11 @@
+version: 2
+
+sources:
+  - name: open_food_facts
+    description: Real product data for India from Open Food Facts (https://world.openfoodfacts.org), used under the Open Database License (ODbL).
+    database: GODESI_RAW
+    schema: OPEN_FOOD_FACTS
+    tables:
+      - name: products
+        description: 26,293 products sold in India, one row per barcode (code). Loaded as-is, every column VARCHAR.
+

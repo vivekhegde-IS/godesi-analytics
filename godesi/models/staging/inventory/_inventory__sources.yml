@@ -1,0 +1,10 @@
+version: 2
+
+sources:
+  - name: inventory
+    description: Warehouse stock system (synthetic).
+    database: GODESI_RAW
+    schema: INVENTORY
+    tables:
+      - name: inventory_daily
+        description: End-of-day stock per warehouse (WH-BLR, WH-HYD, WH-DEL) and SKU.
