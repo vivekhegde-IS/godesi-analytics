@@ -53,8 +53,8 @@ redemptions as (
 
 select
     p.*,
-    round((p.avg_daily_revenue_during - p.avg_daily_revenue_before)
-          / nullif(p.avg_daily_revenue_before, 0) * 100, 1)       as revenue_uplift_pct,
+    round({{ safe_divide('p.avg_daily_revenue_during - p.avg_daily_revenue_before',
+                       'p.avg_daily_revenue_before') }} * 100, 1)       as revenue_uplift_pct,
     coalesce(r.orders_with_code, 0)                               as orders_with_code,
     coalesce(r.discount_given_inr, 0)                             as discount_given_inr,
     p.start_date <= '2024-01-28'                                  as has_no_full_before_period

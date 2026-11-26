@@ -24,8 +24,8 @@ renamed as (
         lower(trim(s.email))                        as email,
         try_to_date(s.signup_date)                  as signup_date,
         s.city                                      as city_raw,      -- kept for auditing
-        coalesce(m.city, initcap(trim(s.city)))     as city,
-        initcap(trim(s.state))                      as state,
+        coalesce(m.city, {{ standardize_city('s.city') }}) as city,
+        {{ standardize_city('s.state') }}           as state,
         nullif(trim(s.pincode), '')                 as pincode,       -- about 3% are missing
         lower(trim(s.acquisition_source))           as acquisition_source,
         s._source_file,

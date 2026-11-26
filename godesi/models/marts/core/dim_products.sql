@@ -10,7 +10,7 @@ select
     pack_size_g,
     mrp_inr                                                  as current_mrp_inr,
     cost_inr                                                 as current_cost_inr,
-    round((mrp_inr - cost_inr) / nullif(mrp_inr, 0) * 100, 1) as current_margin_at_mrp_pct,
+    round({{ safe_divide('mrp_inr - cost_inr', 'mrp_inr') }} * 100, 1) as current_margin_at_mrp_pct,
     launch_date,
     launch_date >= '2024-01-01'                              as is_new_launch,     -- launched during the sales period
     is_active,

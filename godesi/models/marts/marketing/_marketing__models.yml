@@ -1,7 +1,64 @@
 version: 2
-
 models:
-  - name: mart_customer_cohorts
-    description: "Q5: active customers, retention % and cumulative revenue per customer (LTV) by first-order cohort month and months since first order. Grain: one row per cohort_month and months_since_first_order."
-  - name: mart_promo_impact
-    description: "Q7: average daily online revenue during each promotion vs the 28 days before, redemptions and discount given. Grain: one row per promo_code."
+- name: mart_customer_cohorts
+  description: 'Q5: active customers, retention % and cumulative revenue per customer (LTV) by first-order cohort month and
+    months since first order. Grain: one row per cohort_month and months_since_first_order.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - cohort_month
+        - months_since_first_order
+  columns:
+  - name: cohort_month
+    description: '{{ doc("cohort_month") }}'
+  - name: months_since_first_order
+    description: 0 = the first-order month, 1 = the month after, ...
+  - name: cohort_customers
+    description: Customers whose first order was in the cohort month.
+  - name: active_customers
+    description: Cohort customers who ordered in that month.
+  - name: retention_pct
+    description: '{{ doc("retention_pct") }}'
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+          max_value: 100
+  - name: orders
+    description: Orders placed by the cohort in that month.
+  - name: net_revenue_inr
+    description: Net revenue from the cohort in that month.
+  - name: cumulative_revenue_per_customer
+    description: Running net revenue per cohort customer up to that month (LTV curve).
+- name: mart_promo_impact
+  description: 'Q7: average daily online revenue during each promotion vs the 28 days before, redemptions and discount given.
+    Grain: one row per promo_code.'
+  columns:
+  - name: promo_code
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: promo_name
+    description: Promo name.
+  - name: promo_channel
+    description: Channel the promo applies to.
+  - name: discount_pct
+    description: Discount percentage of the promo.
+  - name: start_date
+    description: First day the promo was active.
+  - name: end_date
+    description: Last day the promo was active.
+  - name: avg_daily_revenue_during
+    description: Average daily net revenue while the promo ran.
+  - name: avg_daily_revenue_before
+    description: Average daily net revenue in the 28 days before.
+  - name: revenue_uplift_pct
+    description: '{{ doc("revenue_uplift_pct") }}'
+  - name: orders_with_code
+    description: Orders that used the code.
+  - name: discount_given_inr
+    description: Total discount given with the code.
+  - name: has_no_full_before_period
+    description: True when the promo started before 28 days of history existed.

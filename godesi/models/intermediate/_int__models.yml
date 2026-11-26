@@ -1,17 +1,90 @@
 version: 2
-
 models:
-  - name: int_products__price_history
-    description: "Every price version of every product (SCD Type 2) rebuilt from the versions kept in RAW. Grain: one row per sku_id per version. valid_to is NULL for the current version."
-  - name: int_orders__unioned
-    description: "Orders from ERP (offline), ECOM (D2C) and MARKETPLACE in one shape, with source_system and is_cancelled. Grain: one row per order_id."
-  - name: int_order_items__unioned
-    description: "Order lines from the three systems in one shape. Grain: one row per order_item_id."
-  - name: int_order_items__enriched
-    description: "Order lines joined to their order, product and the price version valid at order time; gross revenue, discount, net revenue, COGS and gross margin. Grain: one row per order_item_id."
-  - name: int_returns__aggregated
-    description: "Returns and refunds summed per order line. Grain: one row per returned order_item_id."
-  - name: int_customers__first_order
-    description: "First order date and channel, last order and lifetime orders per online customer (cancelled orders excluded). Grain: one row per customer_id with orders."
-  - name: int_products__godesi_enriched
-    description: "Product master with real Open Food Facts details (nutrition, Nutri-Score, image) for the 9 real GoDesi SKUs. Grain: one row per sku_id."
+- name: int_products__price_history
+  description: 'Every price version of every product (SCD Type 2) rebuilt from the versions kept in RAW. Grain: one row per
+    sku_id per version. valid_to is NULL for the current version.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - sku_id
+        - version_number
+  columns:
+  - name: sku_id
+    description: Product id.
+    data_tests:
+    - not_null
+  - name: valid_from
+    description: Start of this price version.
+    data_tests:
+    - not_null
+- name: int_orders__unioned
+  description: 'Orders from ERP (offline), ECOM (D2C) and MARKETPLACE in one shape, with source_system and is_cancelled. Grain:
+    one row per order_id.'
+  columns:
+  - name: order_id
+    description: Primary key across all three systems.
+    data_tests:
+    - unique
+    - not_null
+  - name: channel
+    description: Sales channel.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - marketplace
+          - quick_commerce
+          - d2c
+          - offline
+- name: int_order_items__unioned
+  description: 'Order lines from the three systems in one shape. Grain: one row per order_item_id.'
+  columns:
+  - name: order_item_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+- name: int_order_items__enriched
+  description: 'Order lines joined to their order, product and the price version valid at order time; gross revenue, discount,
+    net revenue, COGS and gross margin. Grain: one row per order_item_id.'
+  columns:
+  - name: order_item_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: mrp_at_order_inr
+    description: MRP valid at order time (SCD2 join).
+    data_tests:
+    - not_null
+  - name: unit_cost_inr
+    description: Cost valid at order time.
+    data_tests:
+    - not_null
+- name: int_returns__aggregated
+  description: 'Returns and refunds summed per order line. Grain: one row per returned order_item_id.'
+  columns:
+  - name: order_item_id
+    description: 'Primary key: returned order line.'
+    data_tests:
+    - unique
+    - not_null
+- name: int_customers__first_order
+  description: 'First order date and channel, last order and lifetime orders per online customer (cancelled orders excluded).
+    Grain: one row per customer_id with orders.'
+  columns:
+  - name: customer_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+- name: int_products__godesi_enriched
+  description: 'Product master with real Open Food Facts details (nutrition, Nutri-Score, image) for the 9 real GoDesi SKUs.
+    Grain: one row per sku_id.'
+  columns:
+  - name: sku_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null

@@ -1,7 +1,62 @@
 version: 2
-
 models:
-  - name: stg_marketplace__orders
-    description: "Marketplace and quick-commerce orders. Two timestamp formats parsed; exact duplicates and late updates removed. Grain: one row per order_id."
-  - name: stg_marketplace__order_items
-    description: "Marketplace and quick-commerce order lines. Text prices like 'Rs. 120.00' converted to numbers. Grain: one row per order_item_id."
+- name: stg_marketplace__orders
+  description: 'Marketplace and quick-commerce orders. Two timestamp formats parsed; exact duplicates and late updates removed.
+    Grain: one row per order_id.'
+  columns:
+  - name: order_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: channel
+    description: marketplace or quick_commerce.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - marketplace
+          - quick_commerce
+  - name: order_status
+    description: Latest status of the order.
+    data_tests:
+    - accepted_values:
+        arguments:
+          values:
+          - placed
+          - shipped
+          - delivered
+          - cancelled
+  - name: ordered_at
+    description: Order time; both source formats parsed.
+    data_tests:
+    - not_null
+  - name: customer_id
+    description: Customer who ordered.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_ecom__customers')
+          field: customer_id
+- name: stg_marketplace__order_items
+  description: 'Marketplace and quick-commerce order lines. Text prices like ''Rs. 120.00'' converted to numbers. Grain: one
+    row per order_item_id.'
+  columns:
+  - name: order_item_id
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: order_id
+    description: Parent order.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('stg_marketplace__orders')
+          field: order_id
+  - name: unit_price_inr
+    description: Price charged; 'Rs. 120.00' text converted.
+    data_tests:
+    - not_null

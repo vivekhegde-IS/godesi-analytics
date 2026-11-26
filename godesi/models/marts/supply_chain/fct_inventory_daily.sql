@@ -54,7 +54,7 @@ select
     n.network_on_hand_units,
     n.units_sold                                                 as network_units_sold,
     round(n.avg_daily_units_28d, 1)                              as network_avg_daily_units_28d,
-    round(n.network_on_hand_units / nullif(n.avg_daily_units_28d, 0), 1) as network_days_of_cover
+    round({{ safe_divide('n.network_on_hand_units', 'n.avg_daily_units_28d') }}, 1) as network_days_of_cover
 from stock as s
 inner join network_cover as n
     on s.snapshot_date = n.snapshot_date

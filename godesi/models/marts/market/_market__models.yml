@@ -1,11 +1,143 @@
 version: 2
-
 models:
-  - name: dim_market_products
-    description: "All 26,293 real products sold in India (Open Food Facts) with cleaned brand, market segment, pack size, Nutri-Score and nutrition, plus is_godesi / is_competitor. Grain: one row per barcode."
-  - name: dim_brands
-    description: "Brands with product count, main segment, median sugar and Nutri-Score mix. Grain: one row per brand."
-  - name: mart_market_landscape
-    description: "Q8, Q9: products, median sugar, pack size and Nutri-Score mix per brand within each market segment, with segment crowding (products, brands) and brand rank. Grain: one row per market_segment and brand."
-  - name: mart_category_growth
-    description: "Q9: new products and brands listed per market segment per year, with a running total. Grain: one row per market_segment and listed_year."
+- name: dim_market_products
+  description: 'All 26,293 real products sold in India (Open Food Facts) with cleaned brand, market segment, pack size, Nutri-Score
+    and nutrition, plus is_godesi / is_competitor. Grain: one row per barcode.'
+  columns:
+  - name: barcode
+    description: Primary key.
+    data_tests:
+    - unique
+    - not_null
+  - name: product_name
+    description: Product name.
+  - name: brand
+    description: Cleaned brand name (brand_mapping seed).
+  - name: is_godesi
+    description: True for GoDesi's own products.
+  - name: is_competitor
+    description: True for brands selling in the same segments as GoDesi.
+  - name: market_segment
+    description: '{{ doc("market_segment") }}'
+    data_tests:
+    - not_null
+  - name: main_category
+    description: Open Food Facts main category (language prefix removed).
+  - name: food_group
+    description: Open Food Facts food group.
+  - name: food_sub_group
+    description: Open Food Facts food sub-group.
+  - name: net_quantity
+    description: Pack size parsed from text (e.g. '200 g' -> 200).
+  - name: quantity_unit
+    description: g or ml.
+  - name: nutriscore_grade
+    description: Nutri-Score A (healthiest) to E; NULL when unknown.
+  - name: nova_group
+    description: NOVA processing level 1-4 (4 = ultra-processed).
+  - name: energy_kcal_100g
+    description: Energy per 100 g (kcal). Impossible values set to NULL in staging.
+  - name: sugars_100g
+    description: Sugar per 100 g (g). Impossible values set to NULL in staging.
+  - name: fat_100g
+    description: Fat per 100 g (g).
+  - name: saturated_fat_100g
+    description: Saturated fat per 100 g (g).
+  - name: salt_100g
+    description: Salt per 100 g (g).
+  - name: proteins_100g
+    description: Protein per 100 g (g).
+  - name: additives_count
+    description: Number of additives listed.
+  - name: created_at
+    description: When the product was added to Open Food Facts.
+  - name: listed_year
+    description: Year the product was first added to Open Food Facts.
+- name: dim_brands
+  description: 'Brands with product count, main segment, median sugar and Nutri-Score mix. Grain: one row per brand.'
+  columns:
+  - name: brand
+    description: 'Primary key: cleaned brand name.'
+    data_tests:
+    - unique
+    - not_null
+  - name: is_godesi
+    description: True for GoDesi's own products.
+  - name: is_competitor
+    description: True for brands selling in the same segments as GoDesi.
+  - name: main_segment
+    description: Segment with most of the brand's products.
+  - name: product_count
+    description: Products of the brand in Open Food Facts India.
+  - name: segment_count
+    description: Number of segments the brand sells in.
+  - name: median_sugars_100g
+    description: Median sugar per 100 g of the products.
+  - name: nutriscore_ab_products
+    description: Products graded A or B.
+  - name: nutriscore_de_products
+    description: Products graded D or E.
+  - name: first_listed_year
+    description: Year the brand's first product was added to Open Food Facts.
+- name: mart_market_landscape
+  description: 'Q8, Q9: products, median sugar, pack size and Nutri-Score mix per brand within each market segment, with segment
+    crowding (products, brands) and brand rank. Grain: one row per market_segment and brand.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - market_segment
+        - brand
+  columns:
+  - name: market_segment
+    description: '{{ doc("market_segment") }}'
+  - name: brand
+    description: Cleaned brand name (brand_mapping seed).
+  - name: is_godesi
+    description: True for GoDesi's own products.
+  - name: products
+    description: Products of the brand in the segment.
+  - name: median_sugars_100g
+    description: Median sugar per 100 g of the products.
+  - name: median_pack_size
+    description: Median pack size (g or ml).
+  - name: nutriscore_a
+    description: Products graded A.
+  - name: nutriscore_b
+    description: Products graded B.
+  - name: nutriscore_c
+    description: Products graded C.
+  - name: nutriscore_d
+    description: Products graded D.
+  - name: nutriscore_e
+    description: Products graded E.
+  - name: nutriscore_unknown
+    description: Products without a grade.
+  - name: segment_products
+    description: All products in the segment.
+  - name: segment_brands
+    description: All brands in the segment.
+  - name: share_of_segment_pct
+    description: Brand products / segment products x 100.
+  - name: brand_rank_in_segment
+    description: Rank by number of products (1 = most).
+- name: mart_category_growth
+  description: 'Q9: new products and brands listed per market segment per year, with a running total. Grain: one row per market_segment
+    and listed_year.'
+  data_tests:
+  - dbt_utils.unique_combination_of_columns:
+      arguments:
+        combination_of_columns:
+        - market_segment
+        - listed_year
+  columns:
+  - name: market_segment
+    description: '{{ doc("market_segment") }}'
+  - name: listed_year
+    description: Year the product was first added to Open Food Facts.
+  - name: new_products
+    description: Products first listed that year.
+  - name: brands_listing
+    description: Brands that listed a product that year.
+  - name: cumulative_products
+    description: Products listed up to and including that year.

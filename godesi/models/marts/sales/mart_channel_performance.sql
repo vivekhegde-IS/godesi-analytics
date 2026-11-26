@@ -30,8 +30,8 @@ monthly as (
 select
     *,
     round(net_revenue_inr / sum(net_revenue_inr) over (partition by order_month) * 100, 1) as revenue_share_pct,
-    round(net_revenue_inr / nullif(orders, 0), 2)                                       as aov_inr,
-    round(discount_inr / nullif(gross_revenue_inr, 0) * 100, 2)                        as discount_pct,
-    round(gross_margin_inr / nullif(net_revenue_inr, 0) * 100, 1)                      as gross_margin_pct,
-    round(returned_lines / nullif(order_lines, 0) * 100, 2)                            as return_rate_pct
+    round({{ safe_divide('net_revenue_inr', 'orders') }}, 2)                                       as aov_inr,
+    round({{ safe_divide('discount_inr', 'gross_revenue_inr') }} * 100, 2)                        as discount_pct,
+    round({{ safe_divide('gross_margin_inr', 'net_revenue_inr') }} * 100, 1)                      as gross_margin_pct,
+    round({{ safe_divide('returned_lines', 'order_lines') }} * 100, 2)                            as return_rate_pct
 from monthly

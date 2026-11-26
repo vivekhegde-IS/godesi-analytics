@@ -13,8 +13,8 @@ renamed as (
         distributor_id,
         trim(store_name)                      as store_name,
         lower(trim(store_type))               as store_type,      -- kirana / modern_trade
-        initcap(trim(city))                   as city,
-        initcap(trim(state))                  as state,
+        {{ standardize_city('city') }}        as city,
+        {{ standardize_city('state') }}       as state,
         pincode,
         try_to_date(onboarded_date)           as onboarded_date,
         _source_file,
