@@ -58,15 +58,24 @@ base as (
         try_to_number(nutriscore_score)                          as nutriscore_score,
         try_to_number(nova_group)                                as nova_group,
 
-        -- nutrition per 100 g
-        try_to_double(energy_kcal_100g)                          as energy_kcal_100g,
-        try_to_double(fat_100g)                                  as fat_100g,
-        try_to_double(saturated_fat_100g)                        as saturated_fat_100g,
-        try_to_double(carbohydrates_100g)                        as carbohydrates_100g,
-        try_to_double(sugars_100g)                               as sugars_100g,
-        try_to_double(fiber_100g)                                as fiber_100g,
-        try_to_double(proteins_100g)                             as proteins_100g,
-        try_to_double(salt_100g)                                 as salt_100g,
+        -- nutrition per 100 g. Values that are physically impossible (typing errors in
+        -- Open Food Facts, e.g. 2000 g sugar per 100 g) become NULL, so they cannot distort averages.
+        iff(try_to_double(energy_kcal_100g) between 0 and 900,
+            try_to_double(energy_kcal_100g), null)                as energy_kcal_100g,
+        iff(try_to_double(fat_100g) between 0 and 100,
+            try_to_double(fat_100g), null)                        as fat_100g,
+        iff(try_to_double(saturated_fat_100g) between 0 and 100,
+            try_to_double(saturated_fat_100g), null)              as saturated_fat_100g,
+        iff(try_to_double(carbohydrates_100g) between 0 and 100,
+            try_to_double(carbohydrates_100g), null)              as carbohydrates_100g,
+        iff(try_to_double(sugars_100g) between 0 and 100,
+            try_to_double(sugars_100g), null)                     as sugars_100g,
+        iff(try_to_double(fiber_100g) between 0 and 100,
+            try_to_double(fiber_100g), null)                      as fiber_100g,
+        iff(try_to_double(proteins_100g) between 0 and 100,
+            try_to_double(proteins_100g), null)                   as proteins_100g,
+        iff(try_to_double(salt_100g) between 0 and 100,
+            try_to_double(salt_100g), null)                       as salt_100g,
 
         -- popularity and data quality
         try_to_number(unique_scans_n)                            as unique_scans,

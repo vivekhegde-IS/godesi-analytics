@@ -19,3 +19,9 @@ models:
         arguments:
           to: ref('dim_products')
           field: sku_id
+  - name: on_hand_units
+    description: End-of-day stock in the warehouse.
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0

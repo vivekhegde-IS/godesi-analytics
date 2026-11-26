@@ -18,6 +18,10 @@ models:
     data_tests:
     - unique
     - not_null
+  data_tests:
+  - dbt_utils.expression_is_true:
+      arguments:
+        expression: current_mrp_inr > current_cost_inr
 - name: dim_customers
   description: 'All D2C sign-ups with cleaned city, signup and cohort month (month of first order), first channel and lifetime
     orders. Grain: one row per customer_id.'
@@ -146,6 +150,43 @@ models:
           - shipped
           - delivered
           - cancelled
+  - name: quantity
+    description: Units on the line.
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 1
+  - name: unit_price_inr
+    description: Price charged per unit.
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+          inclusive: false
+  - name: discount_inr
+    description: Promo discount on the line.
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+  - name: refund_inr
+    description: Refund paid for the line (0 if not returned).
+    data_tests:
+    - dbt_utils.accepted_range:
+        arguments:
+          min_value: 0
+  data_tests:
+  - dbt_utils.expression_is_true:
+      arguments:
+        expression: discount_inr <= gross_revenue_inr
+  - dbt_utils.expression_is_true:
+      arguments:
+        expression: unit_price_inr <= mrp_at_order_inr
+      config:
+        severity: warn
+  - dbt_utils.expression_is_true:
+      arguments:
+        expression: gross_margin_inr = net_revenue_inr - cogs_inr
 - name: fct_orders
   description: 'Order totals summed from fct_order_items, with status, returns, promo and first-order flags. Grain: one row
     per order_id.'
