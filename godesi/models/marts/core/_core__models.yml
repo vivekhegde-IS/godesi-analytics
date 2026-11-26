@@ -1,0 +1,15 @@
+version: 2
+
+models:
+  - name: dim_date
+    description: "Calendar with year, month, weekday, weekend, monsoon and festival flags (festival_calendar seed). Grain: one row per day, 2024-01-01 to 2025-12-31."
+  - name: dim_products
+    description: "Current product attributes, current MRP and cost, and real Open Food Facts details for the 9 real GoDesi SKUs. Grain: one row per sku_id."
+  - name: dim_customers
+    description: "All D2C sign-ups with cleaned city, signup and cohort month (month of first order), first channel and lifetime orders. Grain: one row per customer_id."
+  - name: dim_channel
+    description: "Platforms mapped to channel and channel group (channel_mapping seed). Grain: one row per platform."
+  - name: dim_geography
+    description: "Cities with state and region (South, West, North, East). Grain: one row per city."
+  - name: dim_stores
+    description: "Kirana and modern-trade stores with their distributor. Grain: one row per store_id."
