@@ -1,10 +1,39 @@
+# ============================================
+# GoDesi Analytics: files git must ignore
+# one pattern per line, no commas
+# ============================================
+
+# ---------- data (too big for git; rebuilt by scripts/generate_data.py) ----------
 data/
+*.tsv
+*.csv
+*.csv.gz
+
+# dbt seeds ARE small and must be committed (exception to *.csv above)
+!seeds/
+!seeds/*.csv
+
+# ---------- secrets: never commit ----------
+profiles.yml
+.env
+*.p8
+*.pem
+*.key
+rsa_key*
+
+# ---------- python ----------
 .venv/
+venv/
+
+
+# ---------- dbt ----------
 target/
 dbt_packages/
 logs/
-*.p8,*.pem, rsa_key*)
-.env/
-profiles.yml/
-__pychache__/ 
+.user.yml
+
+# ---------- editor and OS ----------
 .vscode/
+.idea/
+.DS_Store
+Thumbs.db
