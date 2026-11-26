@@ -28,7 +28,7 @@ select
     sum(l.net_revenue_inr)                                              as net_revenue_inr,
     sum(l.cogs_inr)                                                     as cogs_inr,
     sum(l.gross_margin_inr)                                             as gross_margin_inr,
-    round(sum(l.gross_margin_inr) / nullif(sum(l.net_revenue_inr), 0) * 100, 1) as gross_margin_pct,
+    round({{ safe_divide('sum(l.gross_margin_inr)', 'sum(l.net_revenue_inr)') }} * 100, 1) as gross_margin_pct,
     count_if(l.is_returned)                                             as returned_lines,
     sum(l.refund_inr)                                                   as refund_inr
 from lines as l

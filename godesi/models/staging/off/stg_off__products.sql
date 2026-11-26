@@ -159,3 +159,4 @@ select
     _source_file,
     _loaded_at
 from cleaned
+{{ limit_in_dev(1000) }}
