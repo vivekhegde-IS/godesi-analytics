@@ -43,12 +43,15 @@ models:
       +materialized: table
       +schema: marts
       +tags: ['marts']
+      +persist_docs:          # descriptions become Snowflake comments (visible in Snowsight)
+        relation: true
+        columns: true
 
 seeds:
   godesi:
     +quote_columns: false
     +tags: ['seed']
-    
+
 data_tests:
   godesi:
     +schema: test_failures   # tables of failing rows (only for tests with store_failures)

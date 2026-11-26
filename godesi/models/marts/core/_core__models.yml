@@ -9,6 +9,38 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: year
+    description: Calendar year.
+  - name: quarter
+    description: Quarter 1-4.
+  - name: month
+    description: Month number 1-12.
+  - name: month_name
+    description: Month name.
+  - name: year_month
+    description: Year and month as text, e.g. 2025-10.
+  - name: month_start_date
+    description: First day of the month.
+  - name: week_of_year
+    description: ISO week number.
+  - name: day_of_week
+    description: 'ISO day of week: 1 = Monday ... 7 = Sunday.'
+  - name: day_name
+    description: Day name.
+  - name: is_weekend
+    description: True on Saturday and Sunday.
+  - name: is_monsoon
+    description: True from June to September.
+  - name: festival_name
+    description: Festival on this exact day.
+  - name: is_festival_day
+    description: True on a festival day.
+  - name: festival_window_name
+    description: Festival whose window the day falls in.
+  - name: is_festival_window
+    description: '{{ doc("is_festival_window") }}'
+  - name: is_major_festival_window
+    description: True in the window of a major festival (Diwali, Raksha Bandhan, Holi...).
 - name: dim_products
   description: 'Current product attributes, current MRP and cost, and real Open Food Facts details for the 9 real GoDesi SKUs.
     Grain: one row per sku_id.'
@@ -18,6 +50,48 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: barcode
+    description: Product barcode (EAN) from Open Food Facts.
+  - name: product_name
+    description: Product name.
+  - name: category
+    description: 'GoDesi category: Candy & Pops, Mithai or Namkeen.'
+  - name: sub_category
+    description: Product sub-category.
+  - name: pack_size_g
+    description: Pack size in grams.
+  - name: current_mrp_inr
+    description: Current MRP (latest price version).
+  - name: current_cost_inr
+    description: Current unit cost.
+  - name: current_margin_at_mrp_pct
+    description: 'Margin % if sold at MRP: (MRP - cost) / MRP x 100.'
+  - name: launch_date
+    description: Date the product was launched.
+  - name: is_new_launch
+    description: True when the product launched during the sales period (2024 or later).
+  - name: is_active
+    description: True when the product is still sold.
+  - name: is_real_product
+    description: True for the 9 real GoDesi products found in Open Food Facts.
+  - name: off_product_name
+    description: Product name in Open Food Facts (real products only).
+  - name: off_main_category
+    description: Open Food Facts category (real products only).
+  - name: nutriscore_grade
+    description: Nutri-Score A (healthiest) to E; NULL when unknown.
+  - name: nova_group
+    description: NOVA processing level 1-4 (4 = ultra-processed).
+  - name: energy_kcal_100g
+    description: Energy per 100 g (kcal). Impossible values set to NULL in staging.
+  - name: sugars_100g
+    description: Sugar per 100 g (g). Impossible values set to NULL in staging.
+  - name: fat_100g
+    description: Fat per 100 g (g).
+  - name: salt_100g
+    description: Salt per 100 g (g).
+  - name: image_url
+    description: Product photo from Open Food Facts.
   data_tests:
   - dbt_utils.expression_is_true:
       arguments:
@@ -31,6 +105,40 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: first_name
+    description: First name (synthetic).
+  - name: last_name
+    description: Last name (synthetic).
+  - name: email
+    description: Email (synthetic).
+  - name: city
+    description: Cleaned city name (customer city online, store city offline). Joins to dim_geography.
+  - name: state
+    description: Indian state.
+  - name: pincode
+    description: PIN code (about 3% missing).
+  - name: acquisition_source
+    description: How the customer found GoDesi (instagram, google, referral...).
+  - name: signup_date
+    description: Date the customer created an account on godesi.in.
+  - name: signup_month
+    description: First day of the signup month.
+  - name: first_order_date
+    description: Date of the customer's first not-cancelled order.
+  - name: cohort_month
+    description: '{{ doc("cohort_month") }}'
+  - name: first_order_channel
+    description: Channel of the first order.
+  - name: last_order_date
+    description: Date of the customer's latest order.
+  - name: lifetime_orders
+    description: Not-cancelled orders placed.
+  - name: has_ordered
+    description: True when the customer ordered at least once.
+  - name: is_repeat_customer
+    description: True with more than one order.
+  - name: days_to_first_order
+    description: Days from signup to first order.
 - name: dim_channel
   description: 'Platforms mapped to channel and channel group (channel_mapping seed). Grain: one row per platform.'
   columns:
@@ -40,7 +148,7 @@ models:
     - unique
     - not_null
   - name: channel
-    description: Channel group of the platform.
+    description: '{{ doc("channel") }}'
     data_tests:
     - accepted_values:
         arguments:
@@ -49,6 +157,10 @@ models:
           - quick_commerce
           - d2c
           - offline
+  - name: channel_group
+    description: Online or offline group of the channel.
+  - name: is_online
+    description: True for every channel except offline.
 - name: dim_geography
   description: 'Cities with state and region (South, West, North, East). Grain: one row per city.'
   columns:
@@ -57,6 +169,8 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: state
+    description: Indian state.
   - name: region
     description: South, West, North or East.
     data_tests:
@@ -67,6 +181,8 @@ models:
           - West
           - North
           - East
+  - name: is_home_city
+    description: True for Bengaluru, GoDesi's home city.
 - name: dim_stores
   description: 'Kirana and modern-trade stores with their distributor. Grain: one row per store_id.'
   columns:
@@ -75,6 +191,24 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: store_name
+    description: Store name.
+  - name: store_type
+    description: kirana or modern_trade.
+  - name: city
+    description: Cleaned city name (customer city online, store city offline). Joins to dim_geography.
+  - name: state
+    description: Indian state.
+  - name: pincode
+    description: Store PIN code.
+  - name: store_onboarded_date
+    description: Date the store started buying from GoDesi.
+  - name: distributor_id
+    description: Distributor serving the store.
+  - name: distributor_name
+    description: Distributor name.
+  - name: distributor_onboarded_date
+    description: Date the distributor joined.
 - name: fct_order_items
   description: 'Fact table at the centre of the star schema: revenue, discount, COGS, margin and returns per order line, with
     keys to every dimension. Incremental (merge on order_item_id). Grain: one row per order_item_id.'
@@ -84,22 +218,8 @@ models:
     data_tests:
     - unique
     - not_null
-  - name: sku_id
-    description: Foreign key to dim_products.
-    data_tests:
-    - not_null
-    - relationships:
-        arguments:
-          to: ref('dim_products')
-          field: sku_id
-  - name: platform
-    description: Foreign key to dim_channel.
-    data_tests:
-    - not_null
-    - relationships:
-        arguments:
-          to: ref('dim_channel')
-          field: platform
+  - name: order_id
+    description: Order id (unique across all three source systems).
   - name: order_date
     description: Foreign key to dim_date.
     data_tests:
@@ -108,6 +228,22 @@ models:
         arguments:
           to: ref('dim_date')
           field: date_day
+  - name: platform
+    description: '{{ doc("platform") }}'
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_channel')
+          field: platform
+  - name: sku_id
+    description: Foreign key to dim_products.
+    data_tests:
+    - not_null
+    - relationships:
+        arguments:
+          to: ref('dim_products')
+          field: sku_id
   - name: customer_id
     description: Foreign key to dim_customers (online orders only).
     data_tests:
@@ -130,8 +266,14 @@ models:
         arguments:
           to: ref('dim_geography')
           field: city
+  - name: state
+    description: Indian state.
+  - name: ordered_at
+    description: Timestamp the order was placed.
+  - name: source_system
+    description: 'System the order came from: erp, ecom or marketplace.'
   - name: channel
-    description: Sales channel.
+    description: '{{ doc("channel") }}'
     data_tests:
     - accepted_values:
         arguments:
@@ -140,6 +282,10 @@ models:
           - quick_commerce
           - d2c
           - offline
+  - name: category
+    description: 'GoDesi category: Candy & Pops, Mithai or Namkeen.'
+  - name: promo_code
+    description: Promo code used, e.g. DIWALI24 (NULL when none).
   - name: order_status
     description: Latest order status.
     data_tests:
@@ -150,6 +296,8 @@ models:
           - shipped
           - delivered
           - cancelled
+  - name: is_cancelled
+    description: '{{ doc("is_cancelled") }}'
   - name: quantity
     description: Units on the line.
     data_tests:
@@ -163,18 +311,40 @@ models:
         arguments:
           min_value: 0
           inclusive: false
+  - name: mrp_at_order_inr
+    description: MRP valid when the order was placed (SCD2 join).
+  - name: unit_cost_inr
+    description: Product cost per unit valid when the order was placed.
+  - name: gross_revenue_inr
+    description: '{{ doc("gross_revenue_inr") }}'
   - name: discount_inr
-    description: Promo discount on the line.
+    description: '{{ doc("discount_inr") }}'
     data_tests:
     - dbt_utils.accepted_range:
         arguments:
           min_value: 0
+  - name: net_revenue_inr
+    description: '{{ doc("net_revenue_inr") }}'
+  - name: cogs_inr
+    description: '{{ doc("cogs_inr") }}'
+  - name: gross_margin_inr
+    description: '{{ doc("gross_margin_inr") }}'
+  - name: is_returned
+    description: True when at least one unit of the line (or order) was returned.
   - name: refund_inr
-    description: Refund paid for the line (0 if not returned).
+    description: '{{ doc("refund_inr") }}'
     data_tests:
     - dbt_utils.accepted_range:
         arguments:
           min_value: 0
+  - name: net_revenue_after_returns_inr
+    description: '{{ doc("net_revenue_after_returns_inr") }}'
+  - name: order_updated_at
+    description: Latest status update of the order (drives the incremental load).
+  - name: first_returned_at
+    description: When the line was first returned (NULL if never).
+  - name: row_updated_at
+    description: Newest change to the line (order update or return); used by the incremental merge.
   data_tests:
   - dbt_utils.expression_is_true:
       arguments:
@@ -199,8 +369,14 @@ models:
     data_tests:
     - unique
     - not_null
+  - name: order_date
+    description: Date the order was placed. Joins to dim_date.date_day.
+  - name: ordered_at
+    description: Timestamp the order was placed.
+  - name: source_system
+    description: 'System the order came from: erp, ecom or marketplace.'
   - name: channel
-    description: Sales channel.
+    description: '{{ doc("channel") }}'
     data_tests:
     - accepted_values:
         arguments:
@@ -209,3 +385,45 @@ models:
           - quick_commerce
           - d2c
           - offline
+  - name: platform
+    description: '{{ doc("platform") }}'
+  - name: customer_id
+    description: Online customer id (NULL for offline orders). Joins to dim_customers.
+  - name: store_id
+    description: Store id for offline orders (NULL for online orders). Joins to dim_stores.
+  - name: city
+    description: Cleaned city name (customer city online, store city offline). Joins to dim_geography.
+  - name: state
+    description: Indian state.
+  - name: order_status
+    description: 'Latest order status: placed, shipped, delivered or cancelled.'
+  - name: is_cancelled
+    description: '{{ doc("is_cancelled") }}'
+  - name: promo_code
+    description: Promo code used, e.g. DIWALI24 (NULL when none).
+  - name: line_count
+    description: Number of lines in the order.
+  - name: units
+    description: Units sold.
+  - name: gross_revenue_inr
+    description: '{{ doc("gross_revenue_inr") }}'
+  - name: discount_inr
+    description: '{{ doc("discount_inr") }}'
+  - name: net_revenue_inr
+    description: '{{ doc("net_revenue_inr") }}'
+  - name: cogs_inr
+    description: '{{ doc("cogs_inr") }}'
+  - name: gross_margin_inr
+    description: '{{ doc("gross_margin_inr") }}'
+  - name: refund_inr
+    description: '{{ doc("refund_inr") }}'
+  - name: net_revenue_after_returns_inr
+    description: '{{ doc("net_revenue_after_returns_inr") }}'
+  - name: is_returned
+    description: True when at least one unit of the line (or order) was returned.
+  - name: updated_at
+    description: Latest status update of the order.
+  - name: has_promo
+    description: True when a promo code was used.
+  - name: is_first_order
+    description: True for the customer's first not-cancelled order.

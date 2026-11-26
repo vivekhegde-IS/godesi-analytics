@@ -10,6 +10,47 @@ models:
         - order_date
         - platform
         - city
+  columns:
+  - name: order_date
+    description: Date the order was placed. Joins to dim_date.date_day.
+  - name: year
+    description: Calendar year.
+  - name: month
+    description: Month number 1-12.
+  - name: year_month
+    description: Year and month as text, e.g. 2025-10.
+  - name: is_weekend
+    description: True on Saturday and Sunday.
+  - name: is_festival_window
+    description: '{{ doc("is_festival_window") }}'
+  - name: festival_window_name
+    description: Festival whose window the day falls in.
+  - name: channel
+    description: '{{ doc("channel") }}'
+  - name: platform
+    description: '{{ doc("platform") }}'
+  - name: region
+    description: South, West, North or East.
+  - name: state
+    description: Indian state.
+  - name: city
+    description: Cleaned city name (customer city online, store city offline). Joins to dim_geography.
+  - name: orders
+    description: Number of distinct orders.
+  - name: units
+    description: Units sold.
+  - name: gross_revenue_inr
+    description: '{{ doc("gross_revenue_inr") }}'
+  - name: discount_inr
+    description: '{{ doc("discount_inr") }}'
+  - name: net_revenue_inr
+    description: '{{ doc("net_revenue_inr") }}'
+  - name: cogs_inr
+    description: '{{ doc("cogs_inr") }}'
+  - name: gross_margin_inr
+    description: '{{ doc("gross_margin_inr") }}'
+  - name: refund_inr
+    description: '{{ doc("refund_inr") }}'
 - name: mart_product_performance
   description: 'Q2: orders, units, net revenue, COGS, gross margin and returns per SKU per month. Grain: one row per order_month
     and sku_id.'
@@ -19,6 +60,37 @@ models:
         combination_of_columns:
         - order_month
         - sku_id
+  columns:
+  - name: order_month
+    description: First day of the order month.
+  - name: sku_id
+    description: GoDesi product id, e.g. GD-0001. Joins to dim_products.
+  - name: product_name
+    description: Product name.
+  - name: category
+    description: 'GoDesi category: Candy & Pops, Mithai or Namkeen.'
+  - name: sub_category
+    description: Product sub-category.
+  - name: is_real_product
+    description: True for the 9 real GoDesi products found in Open Food Facts.
+  - name: is_new_launch
+    description: True when the product launched during the sales period (2024 or later).
+  - name: orders
+    description: Number of distinct orders.
+  - name: units
+    description: Units sold.
+  - name: net_revenue_inr
+    description: '{{ doc("net_revenue_inr") }}'
+  - name: cogs_inr
+    description: '{{ doc("cogs_inr") }}'
+  - name: gross_margin_inr
+    description: '{{ doc("gross_margin_inr") }}'
+  - name: gross_margin_pct
+    description: '{{ doc("gross_margin_pct") }}'
+  - name: returned_lines
+    description: Number of order lines with a return.
+  - name: refund_inr
+    description: '{{ doc("refund_inr") }}'
 - name: mart_channel_performance
   description: 'Q3: revenue share, AOV, discount %, gross margin % and return rate per channel per month. Grain: one row per
     order_month and channel.'
@@ -28,3 +100,36 @@ models:
         combination_of_columns:
         - order_month
         - channel
+  columns:
+  - name: order_month
+    description: First day of the order month.
+  - name: channel
+    description: '{{ doc("channel") }}'
+  - name: orders
+    description: Number of distinct orders.
+  - name: order_lines
+    description: Number of order lines.
+  - name: units
+    description: Units sold.
+  - name: gross_revenue_inr
+    description: '{{ doc("gross_revenue_inr") }}'
+  - name: discount_inr
+    description: '{{ doc("discount_inr") }}'
+  - name: net_revenue_inr
+    description: '{{ doc("net_revenue_inr") }}'
+  - name: gross_margin_inr
+    description: '{{ doc("gross_margin_inr") }}'
+  - name: returned_lines
+    description: Number of order lines with a return.
+  - name: refund_inr
+    description: '{{ doc("refund_inr") }}'
+  - name: revenue_share_pct
+    description: Channel net revenue / all channels that month x 100.
+  - name: aov_inr
+    description: '{{ doc("aov_inr") }}'
+  - name: discount_pct
+    description: Discount / gross revenue x 100.
+  - name: gross_margin_pct
+    description: '{{ doc("gross_margin_pct") }}'
+  - name: return_rate_pct
+    description: Returned lines / order lines x 100.

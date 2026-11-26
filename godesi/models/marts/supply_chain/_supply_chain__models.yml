@@ -11,6 +11,10 @@ models:
         - warehouse_id
         - sku_id
   columns:
+  - name: snapshot_date
+    description: Date of the end-of-day stock snapshot.
+  - name: warehouse_id
+    description: 'Warehouse: WH-BLR, WH-HYD or WH-DEL.'
   - name: sku_id
     description: Foreign key to dim_products.
     data_tests:
@@ -20,8 +24,18 @@ models:
           to: ref('dim_products')
           field: sku_id
   - name: on_hand_units
-    description: End-of-day stock in the warehouse.
+    description: End-of-day stock in this warehouse.
     data_tests:
     - dbt_utils.accepted_range:
         arguments:
           min_value: 0
+  - name: is_stockout
+    description: True when stock is 0.
+  - name: network_on_hand_units
+    description: Stock of the SKU in all warehouses together.
+  - name: network_units_sold
+    description: Units of the SKU sold that day (all channels, not cancelled).
+  - name: network_avg_daily_units_28d
+    description: Average units sold per day over the last 28 days.
+  - name: network_days_of_cover
+    description: '{{ doc("network_days_of_cover") }}'
