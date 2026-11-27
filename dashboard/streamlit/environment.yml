@@ -1,7 +1,10 @@
-# Packages for Streamlit in Snowflake (installed from the Snowflake Anaconda channel).
+# Packages for Streamlit in Snowflake (warehouse runtime, Snowflake Anaconda channel).
+# Pin Streamlit: without a pin Snowflake starts the app on an old default version (about 1.22).
+# Available versions: select * from information_schema.packages where package_name = 'streamlit';
 name: app_environment
 channels:
   - snowflake
 dependencies:
+  - streamlit=1.52.2
+  - plotly=6.3.0
   - pandas
-  - plotly

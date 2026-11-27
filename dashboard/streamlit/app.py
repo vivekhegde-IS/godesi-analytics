@@ -118,7 +118,7 @@ year = st.sidebar.selectbox("Year", ["All years", 2025, 2024])
 channels = st.sidebar.multiselect("Channel", list(CHANNEL_COLOURS), default=list(CHANNEL_COLOURS))
 regions = st.sidebar.multiselect("Region", sorted(sales["region"].dropna().unique()),
                                  default=sorted(sales["region"].dropna().unique()))
-st.sidebar.divider()
+st.sidebar.markdown("---")
 st.sidebar.caption(("Live data from Snowflake MARTS. " if SESSION is not None else "Data exported from Snowflake MARTS. ") +
                    "Sales data is synthetic (portfolio project). Market data: Open Food Facts (ODbL). "
                    "Built with Snowflake + dbt.")
@@ -241,7 +241,7 @@ with tab_chan:
         "AOV": (ch["net_revenue_inr"] / ch["orders"]).map(inr),
     })
     st.subheader("Channel trade-off: offline brings the volume, online brings the margin")
-    st.dataframe(table, hide_index=True, **STRETCH)
+    st.dataframe(table.set_index("Channel"), **STRETCH)        # set_index instead of hide_index: works on old Streamlit
 
     left, right = st.columns(2)
     yoy = sel.pivot_table(index="region", columns="year", values="net_revenue_inr", aggfunc="sum").reset_index()
