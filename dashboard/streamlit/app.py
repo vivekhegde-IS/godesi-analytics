@@ -106,9 +106,12 @@ def pct(x: float, digits: int = 1) -> str:
 
 
 def chart(fig, height=380):
-    fig.update_layout(height=height, margin=dict(l=10, r=10, t=50, b=10), font_color=INK,
-                      legend_title_text="", plot_bgcolor="white")
-    st.plotly_chart(fig, **STRETCH)
+    fig.update_layout(template="plotly_white", height=height, margin=dict(l=10, r=10, t=50, b=10), font_color=INK,
+                      legend_title_text="", plot_bgcolor="white", paper_bgcolor="white",
+                      title_font_color=INK, title_x=0.01)
+    # theme=None: keep OUR colours (dark text on white cards). Streamlit's own theme would turn the text
+    # white in Snowsight's dark mode, making labels invisible on the white chart background.
+    st.plotly_chart(fig, theme=None, **STRETCH)
 
 
 # ------------------------------------------------------------------ sidebar filters
@@ -264,6 +267,7 @@ with tab_chan:
                          text=big["growth"].map(lambda v: f"{v:+.0%}"),
                          title="Fastest-growing cities (2024 revenue ≥ ₹10 lakh)", labels={"growth": "", "city": ""})
             fig.update_xaxes(tickformat=".0%")
+            fig.update_yaxes(categoryorder="total ascending")
             chart(fig, 320)
     st.caption("Cities with a very small 2024 base are left out of the growth ranking: +400% on ₹5 lakh is not "
                "a trend.")
@@ -288,10 +292,13 @@ with tab_cust:
 
     left, right = st.columns([3, 2])
     with left:
-        heat = cohorts.pivot(index="cohort_month", columns="months_since_first_order", values="retention_pct")
+        heat = cohorts[cohorts["months_since_first_order"] > 0].pivot(     # month 0 is always 100%
+            index="cohort_month", columns="months_since_first_order", values="retention_pct")
         fig = px.imshow(heat, color_continuous_scale=["#FFFFFF", "#F1E4DC", SAFFRON], aspect="auto",
                         labels=dict(x="Months since first order", y="Cohort (first-order month)", color="Retention %"),
                         title="Cohort retention: about 1 in 5 customers come back each month")
+        fig.update_xaxes(showgrid=False)
+        fig.update_yaxes(showgrid=False)
         chart(fig, 460)
     with right:
         fig = px.line(curve.reset_index(), x="months_since_first_order", y="ltv", markers=True,
@@ -314,7 +321,9 @@ with tab_cust:
                      hover_data={"discount_given_inr": ":,.0f", "orders_with_code": True},
                      title="Promo uplift: daily revenue vs the 28 days before",
                      labels={"revenue_uplift_pct": "Uplift %", "promo_code": ""})
-        chart(fig, 360)
+        fig.update_traces(textposition="outside", cliponaxis=False)
+        fig.update_yaxes(dtick=1, tickfont_size=10)
+        chart(fig, 560)
 
 # ------------------------------------------------------------------ 5. supply and market (Q6, Q8, Q9)
 with tab_supply:
@@ -341,6 +350,7 @@ with tab_supply:
                      color_discrete_map={"GoDesi": SAFFRON, "Other brands": GREY},
                      title=f"{seg}: brands by number of products listed",
                      labels={"products": "Products in Open Food Facts India", "brand": "", "color": ""})
+        fig.update_yaxes(categoryorder="total ascending")
         chart(fig, 400)
         g = ms[ms["is_godesi"]].iloc[0]
         st.caption(f"GoDesi: rank {int(g['brand_rank_in_segment'])} of {int(g['segment_brands'])} brands, median "
@@ -348,11 +358,12 @@ with tab_supply:
                    + (" The segment mixes all sweet foods (chocolate, honey, jams), not only mithai."
                       if seg == "Sweets & mithai" else ""))
 
-    full = growth[growth["listed_year"].between(2019, growth["listed_year"].max() - 1)]   # drop the partial year
+    full = growth[growth["listed_year"].between(2019, growth["listed_year"].max() - 1)   # drop the partial year
+                  & (growth["market_segment"] != "Uncategorised")]                         # no category in OFF
     top_segs = full.groupby("market_segment")["new_products"].sum().nlargest(6).index
     fig = px.line(full[full["market_segment"].isin(top_segs)], x="listed_year", y="new_products",
                   color="market_segment", markers=True,
-                  title="New products listed per year in the largest segments (full years only)",
+                  title="New products listed per year in the largest segments (full years, categorised only)",
                   labels={"listed_year": "", "new_products": "New products", "market_segment": ""})
     chart(fig, 380)
 
