@@ -1,0 +1,4 @@
+# Packages for running the app locally or on Streamlit Community Cloud (reads the CSVs in marts/).
+streamlit>=1.39
+plotly>=5.20
+pandas>=2.0

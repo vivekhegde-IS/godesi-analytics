@@ -11,6 +11,7 @@ data/
 
 # dbt seeds ARE small and must be committed (exception to *.csv above)
 !godesi/seeds/*.csv
+!dashboard/streamlit/marts/*.csv
 # ---------- secrets: never commit ----------
 profiles.yml
 .env
@@ -21,7 +22,9 @@ rsa_key*
 
 # ---------- python ----------
 .venv/
+.venv-app/
 venv/
+__pycache__/
 
 
 # ---------- dbt ----------

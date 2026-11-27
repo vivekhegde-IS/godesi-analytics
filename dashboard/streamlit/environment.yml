@@ -1,0 +1,7 @@
+# Packages for Streamlit in Snowflake (installed from the Snowflake Anaconda channel).
+name: app_environment
+channels:
+  - snowflake
+dependencies:
+  - pandas
+  - plotly

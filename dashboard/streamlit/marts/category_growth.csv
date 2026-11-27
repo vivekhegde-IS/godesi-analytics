@@ -1,0 +1,149 @@
+market_segment,listed_year,new_products,brands_listing,cumulative_products
+Baby Foods,2023,3,3,3
+Baby Foods,2024,1,1,4
+Baby Foods,2025,2,2,6
+Baby Foods,2026,9,3,15
+Beverages,2012,1,1,1
+Beverages,2013,1,1,2
+Beverages,2014,3,3,5
+Beverages,2015,2,2,7
+Beverages,2016,4,4,11
+Beverages,2017,9,8,20
+Beverages,2018,39,34,59
+Beverages,2019,29,24,88
+Beverages,2020,27,18,115
+Beverages,2021,40,28,155
+Beverages,2022,150,89,305
+Beverages,2023,175,99,480
+Beverages,2024,384,200,864
+Beverages,2025,389,220,1253
+Beverages,2026,366,208,1619
+Biscuits & cakes,2014,1,1,1
+Biscuits & cakes,2016,2,2,3
+Biscuits & cakes,2017,6,6,9
+Biscuits & cakes,2018,34,25,43
+Biscuits & cakes,2019,15,7,58
+Biscuits & cakes,2020,22,15,80
+Biscuits & cakes,2021,20,9,100
+Biscuits & cakes,2022,95,33,195
+Biscuits & cakes,2023,110,37,305
+Biscuits & cakes,2024,249,94,554
+Biscuits & cakes,2025,325,124,879
+Biscuits & cakes,2026,228,117,1107
+Cereals And Potatoes,2015,1,1,1
+Cereals And Potatoes,2016,4,4,5
+Cereals And Potatoes,2017,8,6,13
+Cereals And Potatoes,2018,31,23,44
+Cereals And Potatoes,2019,24,21,68
+Cereals And Potatoes,2020,37,27,105
+Cereals And Potatoes,2021,63,40,168
+Cereals And Potatoes,2022,156,92,324
+Cereals And Potatoes,2023,264,125,588
+Cereals And Potatoes,2024,447,214,1035
+Cereals And Potatoes,2025,458,239,1493
+Cereals And Potatoes,2026,347,196,1840
+Chocolate,2015,1,1,1
+Chocolate,2017,5,4,6
+Chocolate,2018,14,9,20
+Chocolate,2019,7,6,27
+Chocolate,2020,14,8,41
+Chocolate,2021,11,8,52
+Chocolate,2022,41,22,93
+Chocolate,2023,51,20,144
+Chocolate,2024,99,43,243
+Chocolate,2025,121,47,364
+Chocolate,2026,76,33,440
+Composite Foods,2016,1,1,1
+Composite Foods,2017,2,2,3
+Composite Foods,2020,5,4,8
+Composite Foods,2021,2,2,10
+Composite Foods,2022,6,5,16
+Composite Foods,2023,12,6,28
+Composite Foods,2024,18,13,46
+Composite Foods,2025,25,14,71
+Composite Foods,2026,9,9,80
+Fat And Sauces,2012,1,1,1
+Fat And Sauces,2016,4,4,5
+Fat And Sauces,2017,5,5,10
+Fat And Sauces,2018,10,10,20
+Fat And Sauces,2019,14,11,34
+Fat And Sauces,2020,18,15,52
+Fat And Sauces,2021,23,17,75
+Fat And Sauces,2022,54,37,129
+Fat And Sauces,2023,91,60,220
+Fat And Sauces,2024,182,109,402
+Fat And Sauces,2025,192,114,594
+Fat And Sauces,2026,159,88,753
+Fish Meat Eggs,2013,1,1,1
+Fish Meat Eggs,2014,1,1,2
+Fish Meat Eggs,2015,1,1,3
+Fish Meat Eggs,2016,1,1,4
+Fish Meat Eggs,2018,3,3,7
+Fish Meat Eggs,2019,2,1,9
+Fish Meat Eggs,2022,5,3,14
+Fish Meat Eggs,2023,9,9,23
+Fish Meat Eggs,2024,16,15,39
+Fish Meat Eggs,2025,19,15,58
+Fish Meat Eggs,2026,16,12,74
+Fruits And Vegetables,2013,1,1,1
+Fruits And Vegetables,2015,1,1,2
+Fruits And Vegetables,2016,1,1,3
+Fruits And Vegetables,2017,1,1,4
+Fruits And Vegetables,2018,8,6,12
+Fruits And Vegetables,2019,2,2,14
+Fruits And Vegetables,2020,7,6,21
+Fruits And Vegetables,2021,10,10,31
+Fruits And Vegetables,2022,20,16,51
+Fruits And Vegetables,2023,40,26,91
+Fruits And Vegetables,2024,109,53,200
+Fruits And Vegetables,2025,141,78,341
+Fruits And Vegetables,2026,82,52,423
+Milk And Dairy Products,2016,2,2,2
+Milk And Dairy Products,2017,4,3,6
+Milk And Dairy Products,2018,12,7,18
+Milk And Dairy Products,2019,4,4,22
+Milk And Dairy Products,2020,19,11,41
+Milk And Dairy Products,2021,10,7,51
+Milk And Dairy Products,2022,44,28,95
+Milk And Dairy Products,2023,99,49,194
+Milk And Dairy Products,2024,190,68,384
+Milk And Dairy Products,2025,239,103,623
+Milk And Dairy Products,2026,187,82,810
+Salty snacks,2015,1,1,1
+Salty snacks,2016,2,2,3
+Salty snacks,2017,8,6,11
+Salty snacks,2018,41,20,52
+Salty snacks,2019,22,15,74
+Salty snacks,2020,22,16,96
+Salty snacks,2021,36,17,132
+Salty snacks,2022,106,50,238
+Salty snacks,2023,135,71,373
+Salty snacks,2024,366,174,739
+Salty snacks,2025,470,240,1209
+Salty snacks,2026,551,219,1760
+Sweets & mithai,2014,2,2,2
+Sweets & mithai,2015,3,3,5
+Sweets & mithai,2016,4,4,9
+Sweets & mithai,2017,5,5,14
+Sweets & mithai,2018,12,11,26
+Sweets & mithai,2019,12,11,38
+Sweets & mithai,2020,15,13,53
+Sweets & mithai,2021,22,15,75
+Sweets & mithai,2022,49,30,124
+Sweets & mithai,2023,84,51,208
+Sweets & mithai,2024,163,101,371
+Sweets & mithai,2025,214,124,585
+Sweets & mithai,2026,151,97,736
+Uncategorised,2013,1,1,1
+Uncategorised,2015,7,6,8
+Uncategorised,2016,12,7,20
+Uncategorised,2017,40,25,60
+Uncategorised,2018,160,92,220
+Uncategorised,2019,136,58,356
+Uncategorised,2020,191,75,547
+Uncategorised,2021,333,117,880
+Uncategorised,2022,952,251,1832
+Uncategorised,2023,1373,275,3205
+Uncategorised,2024,3452,1096,6657
+Uncategorised,2025,4997,1455,11654
+Uncategorised,2026,4982,1596,16636
