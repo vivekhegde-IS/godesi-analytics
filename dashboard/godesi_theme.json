@@ -1,0 +1,28 @@
+{
+  "name": "GoDesi",
+  "dataColors": [
+    "#B4451F",
+    "#E39B2D",
+    "#2F5D7C",
+    "#6A8E3F",
+    "#7B8794",
+    "#C08A5B",
+    "#3E7CB1",
+    "#9AA5B1"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#1F2933",
+  "tableAccent": "#B4451F",
+  "good": "#3D7A4A",
+  "neutral": "#E39B2D",
+  "bad": "#B4451F",
+  "maximum": "#B4451F",
+  "center": "#F1E4DC",
+  "minimum": "#FFFFFF",
+  "textClasses": {
+    "callout": { "fontFace": "Segoe UI Semibold", "fontSize": 26, "color": "#1F2933" },
+    "title":   { "fontFace": "Segoe UI Semibold", "fontSize": 13, "color": "#1F2933" },
+    "header":  { "fontFace": "Segoe UI Semibold", "fontSize": 11, "color": "#1F2933" },
+    "label":   { "fontFace": "Segoe UI", "fontSize": 10, "color": "#52606D" }
+  }
+}

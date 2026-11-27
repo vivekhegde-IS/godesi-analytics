@@ -1,0 +1,63 @@
+// GoDesi Sales & Distribution Analytics - Power BI measures (DAX).
+// Paste into Power BI Desktop > DAX query view, click Run to check the result,
+// then click "Update model: Add new measures" above DEFINE to save them in the model.
+// Rule: every KPI is a ratio of SUMS (DIVIDE = safe divide), so it is correct at any filter level.
+// Sales KPIs exclude cancelled orders, exactly like the dbt marts.
+
+DEFINE
+	// ---------- base amounts (fct_order_items, cancelled excluded)
+	MEASURE FCT_ORDER_ITEMS[Net Revenue] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[NET_REVENUE_INR] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Gross Revenue] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[GROSS_REVENUE_INR] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Discount] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[DISCOUNT_INR] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Gross Margin] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[GROSS_MARGIN_INR] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Refunds] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[REFUND_INR] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Units] =
+		CALCULATE ( SUM ( FCT_ORDER_ITEMS[QUANTITY] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Orders] =
+		CALCULATE ( DISTINCTCOUNT ( FCT_ORDER_ITEMS[ORDER_ID] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Order Lines] =
+		CALCULATE ( COUNTROWS ( FCT_ORDER_ITEMS ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
+	MEASURE FCT_ORDER_ITEMS[Returned Lines] =
+		CALCULATE ( COUNTROWS ( FCT_ORDER_ITEMS ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE (), FCT_ORDER_ITEMS[IS_RETURNED] = TRUE () )
+
+	// ---------- ratios (always DIVIDE of sums)
+	MEASURE FCT_ORDER_ITEMS[AOV] = DIVIDE ( [Net Revenue], [Orders] )
+	MEASURE FCT_ORDER_ITEMS[Gross Margin %] = DIVIDE ( [Gross Margin], [Net Revenue] )
+	MEASURE FCT_ORDER_ITEMS[Discount %] = DIVIDE ( [Discount], [Gross Revenue] )
+	MEASURE FCT_ORDER_ITEMS[Return Rate] = DIVIDE ( [Returned Lines], [Order Lines] )
+	MEASURE FCT_ORDER_ITEMS[Revenue Share %] =
+		DIVIDE ( [Net Revenue], CALCULATE ( [Net Revenue], ALL ( DIM_CHANNEL ) ) )
+
+	// ---------- time intelligence (needs DIM_DATE marked as the date table)
+	MEASURE FCT_ORDER_ITEMS[Net Revenue PY] = CALCULATE ( [Net Revenue], SAMEPERIODLASTYEAR ( DIM_DATE[DATE_DAY] ) )
+	MEASURE FCT_ORDER_ITEMS[Revenue YoY %] = DIVIDE ( [Net Revenue] - [Net Revenue PY], [Net Revenue PY] )
+
+	// ---------- customers (fct_orders: one row per order)
+	MEASURE FCT_ORDERS[New Customer Revenue] =
+		CALCULATE ( SUM ( FCT_ORDERS[NET_REVENUE_INR] ), FCT_ORDERS[IS_CANCELLED] = FALSE (), FCT_ORDERS[IS_FIRST_ORDER] = TRUE () )
+	MEASURE FCT_ORDERS[Returning Customer Revenue] =
+		CALCULATE ( SUM ( FCT_ORDERS[NET_REVENUE_INR] ), FCT_ORDERS[IS_CANCELLED] = FALSE (), FCT_ORDERS[IS_FIRST_ORDER] = FALSE (),
+			NOT ISBLANK ( FCT_ORDERS[CUSTOMER_ID] ) )
+	MEASURE MART_CUSTOMER_COHORTS[Retention %] =
+		DIVIDE ( SUM ( MART_CUSTOMER_COHORTS[ACTIVE_CUSTOMERS] ), SUM ( MART_CUSTOMER_COHORTS[COHORT_CUSTOMERS] ) )
+
+	// ---------- supply chain
+	MEASURE FCT_INVENTORY_DAILY[Stock-out Days] =
+		CALCULATE ( COUNTROWS ( FCT_INVENTORY_DAILY ), FCT_INVENTORY_DAILY[IS_STOCKOUT] = TRUE () )
+
+// Check: one row per year. Expected 2024: 81.4M, 33,437 orders, AOV 2,435, margin 29.1%;
+//        2025: 106.2M, 41,681 orders, AOV 2,548, margin 29.9%, YoY 30.4%.
+EVALUATE
+	SUMMARIZECOLUMNS (
+		DIM_DATE[YEAR],
+		"Net Revenue", [Net Revenue],
+		"Orders", [Orders],
+		"AOV", [AOV],
+		"Gross Margin %", [Gross Margin %],
+		"Revenue YoY %", [Revenue YoY %]
+	)
