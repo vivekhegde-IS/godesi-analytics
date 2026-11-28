@@ -15,10 +15,10 @@
 | 2 | Online channels earn almost double the margin | 45% vs **24.9%** offline | Push margin mix online without starving offline |
 | 3 | Mithai is the business; 29 of 60 SKUs make 80% | Top 10 SKUs are **all mithai** | Protect mithai availability; prune the long tail |
 | 4 | West and North grow fastest | West **+44%**, North +41% | Expand West through marketplace and quick commerce |
-| 5 | About 1 in 5 customers come back | **22.2%** month 1 → **14.3%** month 12 | Second-order programme in the first 30 days |
+| 5 | Repeat buying is weaker for newer customers | Month-1 retention **34%** (2024 cohorts) → **12.5%** (2025 cohorts) | Second-order programme in the first 30 days |
 | 6 | Festival promos work; generic ones do not | DIWALI25 **+131%**; 9 of 26 negative | Fewer, festival-led promos |
 | 7 | Stock-outs peak just when demand peaks | **681** warehouse-SKU-days in Oct 2025 | Build festival stock from August |
-| 8 | GoDesi is visible in Sweets & mithai | **8th of 346** brands | Use the low-sugar angle as a differentiator |
+| 8 | GoDesi is visible in Sweets & mithai | Joint **11th of 317** brands | Use the low-sugar angle as a differentiator |
 
 ---
 
@@ -65,10 +65,17 @@
 - **Chart:** Channels & regions → region growth, fastest-growing cities.
 - **Recommendation:** grow West and North through marketplace and quick commerce, not by opening offline distribution there first.
 
-## 5. About 1 in 5 customers come back
+## 5. Repeat buying is weaker for newer customers
 - **Finding:** weighted across all cohorts, **22.2%** of customers order again in month 1, 20.4% in month 3,
   17.5% in month 6 and **14.3% in month 12**. Average 12-month revenue per customer is **₹3,162**. Returning
   customers bring about two-thirds of revenue (70% in 2024, 66% in 2025).
+- **But the heatmap shows the average hides a trend:** month-1 retention is **34.4%** for the 2024 cohorts and only
+  **12.5%** for the 2025 cohorts (month 3: 28.2% vs 11.9%; month 6: 20.5% vs 12.1%). Two reasons:
+  1. *Left-censoring:* the data starts in January 2024, so the early "new" cohorts include customers who were already
+     buying in 2023. They look loyal because they are not really new. Treat the 2024-01 to 2024-03 cohorts with care.
+  2. The customer base grew faster than orders, so each customer orders less often. (In this synthetic data, orders
+     are assigned to random existing customers, which exaggerates the effect.)
+  The honest planning number for a **new** customer today is about **12-15%** in month 1, not 22%.
 - **Chart:** Customers & promotions → cohort heatmap, LTV curve, new vs returning.
 - **Recommendation:** the biggest drop is right after the first order. A second-order offer within 30 days
   (D2C email or WhatsApp) is the cheapest growth lever. Measure it as month-1 retention per cohort in the heatmap.
@@ -94,9 +101,13 @@
   without stock).
 
 ## 8. GoDesi in the real market (Open Food Facts India)
-- **Finding:** in Sweets & mithai, GoDesi ranks **8th of 346 brands** by number of listed products (8 products,
-  1.3% of the segment). Cadbury leads (44), then Dabur, Nestlé, Parle, Amul and Haldiram's. GoDesi's median sugar
-  is **59.3 g per 100 g**.
+- **Finding:** in Sweets & mithai, GoDesi ranks joint **11th of 317 brands** by number of listed products (8 products,
+  1.3% of the segment, tied with Chupa Chups and Wrigley's). Cadbury leads (44), then Dabur, Nestlé, Parle, Amul,
+  Apis and Kissan. GoDesi's median sugar is **59.3 g per 100 g**.
+- *Data-quality fix found while building the dashboard:* many brands were written in several cases (Apis / apis,
+  Chupa Chups / CHUPA CHUPS). Snowflake compares text case-sensitively, so they counted as separate brands and
+  GoDesi looked 8th of 346. Power BI (case-insensitive) showed different bars, which exposed it. dbt now keeps one
+  spelling per brand (5,751 brand names became 4,695 across all segments).
 - **Chart:** Supply & market → brands in the segment, new products per year.
 - **Recommendation:** GoDesi's online visibility is already strong for its size. A lower-sugar mithai line would
   stand out in a segment dominated by chocolate brands.

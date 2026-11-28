@@ -1,8 +1,10 @@
-// GoDesi Sales & Distribution Analytics - Power BI measures (DAX).
-// Paste into Power BI Desktop > DAX query view, click Run to check the result,
-// then click "Update model: Add new measures" above DEFINE to save them in the model.
-// Rule: every KPI is a ratio of SUMS (DIVIDE = safe divide), so it is correct at any filter level.
-// Sales KPIs exclude cancelled orders, exactly like the dbt marts.
+// GoDesi Sales & Distribution Analytics - Power BI measures (DAX), final version after building the 4 pages.
+// This file documents every measure in GoDesi_Sales_Analytics.pbix so it can be reviewed and rebuilt as code.
+// Paste into Power BI Desktop > DAX query view and click Run to check the result. To create measures in a new model,
+// click "Update model: Add new measures" above DEFINE (the 2 calculated columns at the bottom are created with
+// Data pane > table > ... > New column).
+// Rules: every KPI is a ratio of SUMS (DIVIDE = safe divide, blank instead of an error), so it is correct at any filter
+// level. Sales KPIs exclude cancelled orders, exactly like the dbt marts.
 
 DEFINE
 	// ---------- base amounts (fct_order_items, cancelled excluded)
@@ -24,34 +26,83 @@ DEFINE
 		CALCULATE ( COUNTROWS ( FCT_ORDER_ITEMS ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
 	MEASURE FCT_ORDER_ITEMS[Returned Lines] =
 		CALCULATE ( COUNTROWS ( FCT_ORDER_ITEMS ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE (), FCT_ORDER_ITEMS[IS_RETURNED] = TRUE () )
+	MEASURE FCT_ORDER_ITEMS[Products Sold] =
+		CALCULATE ( DISTINCTCOUNT ( FCT_ORDER_ITEMS[SKU_ID] ), FCT_ORDER_ITEMS[IS_CANCELLED] = FALSE () )
 
 	// ---------- ratios (always DIVIDE of sums)
 	MEASURE FCT_ORDER_ITEMS[AOV] = DIVIDE ( [Net Revenue], [Orders] )
 	MEASURE FCT_ORDER_ITEMS[Gross Margin %] = DIVIDE ( [Gross Margin], [Net Revenue] )
 	MEASURE FCT_ORDER_ITEMS[Discount %] = DIVIDE ( [Discount], [Gross Revenue] )
-	MEASURE FCT_ORDER_ITEMS[Return Rate] = DIVIDE ( [Returned Lines], [Order Lines] )
+	// returns are only tracked for online orders (offline has no returns data), so offline lines are not in the denominator
+	MEASURE FCT_ORDER_ITEMS[Return Rate] =
+		DIVIDE ( [Returned Lines], CALCULATE ( [Order Lines], KEEPFILTERS ( DIM_CHANNEL[IS_ONLINE] = TRUE () ) ) )
 	MEASURE FCT_ORDER_ITEMS[Revenue Share %] =
 		DIVIDE ( [Net Revenue], CALCULATE ( [Net Revenue], ALL ( DIM_CHANNEL ) ) )
+	MEASURE FCT_ORDER_ITEMS[Online Share %] =
+		DIVIDE ( CALCULATE ( [Net Revenue], DIM_CHANNEL[IS_ONLINE] = TRUE () ), [Net Revenue] )
+	MEASURE FCT_ORDER_ITEMS[New Launch Revenue %] =
+		DIVIDE ( CALCULATE ( [Net Revenue], DIM_PRODUCTS[IS_NEW_LAUNCH] = TRUE () ), [Net Revenue] )
+	// Pareto: share of revenue from this SKU and every bigger SKU (works with PRODUCT_NAME or Revenue Rank on the axis)
+	MEASURE FCT_ORDER_ITEMS[Cumulative Revenue %] =
+		VAR CurrentRevenue = [Net Revenue]
+		VAR AllSkus = ADDCOLUMNS ( ALLSELECTED ( DIM_PRODUCTS ), "@rev", [Net Revenue] )
+		RETURN DIVIDE ( SUMX ( FILTER ( AllSkus, [@rev] >= CurrentRevenue ), [@rev] ), SUMX ( AllSkus, [@rev] ) )
 
-	// ---------- time intelligence (needs DIM_DATE marked as the date table)
+	// ---------- time (DIM_DATE is the marked date table; DIM_DATE[YEAR] is Text)
 	MEASURE FCT_ORDER_ITEMS[Net Revenue PY] = CALCULATE ( [Net Revenue], SAMEPERIODLASTYEAR ( DIM_DATE[DATE_DAY] ) )
-	MEASURE FCT_ORDER_ITEMS[Revenue YoY %] = DIVIDE ( [Net Revenue] - [Net Revenue PY], [Net Revenue PY] )
+	// only when exactly one year is selected; otherwise "both years vs 2024" would show a meaningless 130%
+	MEASURE FCT_ORDER_ITEMS[Revenue YoY %] =
+		IF ( HASONEVALUE ( DIM_DATE[YEAR] ), DIVIDE ( [Net Revenue] - [Net Revenue PY], [Net Revenue PY] ) )
+	MEASURE FCT_ORDER_ITEMS[Revenue 2024] = CALCULATE ( [Net Revenue], DIM_DATE[YEAR] = "2024" )
+	MEASURE FCT_ORDER_ITEMS[Revenue 2025] = CALCULATE ( [Net Revenue], DIM_DATE[YEAR] = "2025" )
+	MEASURE FCT_ORDER_ITEMS[Growth 2025 vs 2024] = DIVIDE ( [Revenue 2025] - [Revenue 2024], [Revenue 2024] )
+	// rust for months with a major festival window, saffron otherwise (Format > Columns > Color > fx > Field value)
+	MEASURE FCT_ORDER_ITEMS[Festival Colour] =
+		IF ( CALCULATE ( COUNTROWS ( DIM_DATE ), DIM_DATE[IS_MAJOR_FESTIVAL_WINDOW] = TRUE () ) > 0, "#B4451F", "#E39B2D" )
 
-	// ---------- customers (fct_orders: one row per order)
+	// ---------- customers (fct_orders: one row per order; customer ids exist for online orders only)
 	MEASURE FCT_ORDERS[New Customer Revenue] =
 		CALCULATE ( SUM ( FCT_ORDERS[NET_REVENUE_INR] ), FCT_ORDERS[IS_CANCELLED] = FALSE (), FCT_ORDERS[IS_FIRST_ORDER] = TRUE () )
 	MEASURE FCT_ORDERS[Returning Customer Revenue] =
 		CALCULATE ( SUM ( FCT_ORDERS[NET_REVENUE_INR] ), FCT_ORDERS[IS_CANCELLED] = FALSE (), FCT_ORDERS[IS_FIRST_ORDER] = FALSE (),
 			NOT ISBLANK ( FCT_ORDERS[CUSTOMER_ID] ) )
+	MEASURE FCT_ORDERS[Returning Share %] =
+		DIVIDE ( [Returning Customer Revenue], [New Customer Revenue] + [Returning Customer Revenue] )
+
+	// ---------- cohorts (weighted: sum of active / sum of cohort customers, same as analyses/q5_retention.sql)
 	MEASURE MART_CUSTOMER_COHORTS[Retention %] =
 		DIVIDE ( SUM ( MART_CUSTOMER_COHORTS[ACTIVE_CUSTOMERS] ), SUM ( MART_CUSTOMER_COHORTS[COHORT_CUSTOMERS] ) )
+	MEASURE MART_CUSTOMER_COHORTS[Retention Month 1] =
+		CALCULATE ( [Retention %], MART_CUSTOMER_COHORTS[MONTHS_SINCE_FIRST_ORDER] = 1 )
+	MEASURE MART_CUSTOMER_COHORTS[Retention Month 12] =
+		CALCULATE ( [Retention %], MART_CUSTOMER_COHORTS[MONTHS_SINCE_FIRST_ORDER] = 12 )
+	MEASURE MART_CUSTOMER_COHORTS[Revenue per Customer 12M] =
+		CALCULATE (
+			DIVIDE (
+				SUMX ( MART_CUSTOMER_COHORTS,
+					MART_CUSTOMER_COHORTS[CUMULATIVE_REVENUE_PER_CUSTOMER] * MART_CUSTOMER_COHORTS[COHORT_CUSTOMERS] ),
+				SUM ( MART_CUSTOMER_COHORTS[COHORT_CUSTOMERS] ) ),
+			MART_CUSTOMER_COHORTS[MONTHS_SINCE_FIRST_ORDER] = 12 )
+
+	// ---------- promotions (the mart stores 130.7 for 130.7 %; promos without a full 28-day "before" window are left out)
+	MEASURE MART_PROMO_IMPACT[Promo Uplift %] =
+		CALCULATE (
+			DIVIDE ( SUM ( MART_PROMO_IMPACT[REVENUE_UPLIFT_PCT] ), 100 ),
+			MART_PROMO_IMPACT[HAS_NO_FULL_BEFORE_PERIOD] = FALSE () )
+	MEASURE MART_PROMO_IMPACT[Promo Colour] = IF ( [Promo Uplift %] < 0, "#B4451F", "#6A8E3F" )
 
 	// ---------- supply chain
 	MEASURE FCT_INVENTORY_DAILY[Stock-out Days] =
 		CALCULATE ( COUNTROWS ( FCT_INVENTORY_DAILY ), FCT_INVENTORY_DAILY[IS_STOCKOUT] = TRUE () )
 
-// Check: one row per year. Expected 2024: 81.4M, 33,437 orders, AOV 2,435, margin 29.1%;
+// ---------- calculated columns (create with New column, not in DEFINE)
+// DIM_PRODUCTS[Revenue Rank]        = RANKX ( ALL ( DIM_PRODUCTS ), [Net Revenue], , DESC, DENSE )   -- Pareto x-axis (continuous)
+// MART_PROMO_IMPACT[Promo Result]   = IF ( MART_PROMO_IMPACT[REVENUE_UPLIFT_PCT] < 0, "Lost revenue", "Lifted revenue" )
+
+// Check: one row per year. Expected 2024: 81.4M, 33,437 orders, AOV 2,435, margin 29.1%, YoY blank;
 //        2025: 106.2M, 41,681 orders, AOV 2,548, margin 29.9%, YoY 30.4%.
+// Page targets (no filter): Online Share 23.4%, Return Rate 2.00%, New Launch 17.6%, Retention M1 22.2%, M12 14.3%,
+//        Revenue per Customer 12M Rs 3,162, Returning Share 67.8%, DIWALI25 uplift 130.7%.
 EVALUATE
 	SUMMARIZECOLUMNS (
 		DIM_DATE[YEAR],

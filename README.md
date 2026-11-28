@@ -31,10 +31,10 @@ for dashboards.
 - **Offline** (kirana and modern trade) brings about **77%** of revenue at a 24.9% gross margin; online channels earn about 45%.
 - **29 of 60 SKUs make 80%** of revenue; the top 10 are all mithai.
 - **West** is the fastest-growing region (+44%) and has the best margin, because 41% of its revenue is online.
-- **22.2%** of customers order again in month 1 and **14.3%** in month 12; 12-month revenue per customer is INR 3,162.
+- **22.2%** of customers order again in month 1 and **14.3%** in month 12 (12-month revenue per customer INR 3,162), but newer cohorts repeat much less: month-1 retention fell from **34%** (2024 cohorts) to **12.5%** (2025 cohorts).
 - **Diwali 2025** promo days averaged **+131%** daily revenue versus the 28 days before; 9 of 26 promos had negative uplift.
 - **All 60 SKUs stocked out somewhere in October 2025** (681 warehouse-SKU-days, 9.4 days of cover), just before the festive peak.
-- In the real Open Food Facts market data, GoDesi ranks **8th of 346 brands** in Sweets & mithai,
+- In the real Open Food Facts market data, GoDesi ranks joint **11th of 317 brands** in Sweets & mithai,
   with a median sugar content of 59.3 g per 100 g.
 
 Each finding has its number, chart and recommendation in **[docs/insights.md](docs/insights.md)**.
