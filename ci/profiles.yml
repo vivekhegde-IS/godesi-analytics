@@ -1,0 +1,40 @@
+# dbt connection for GitHub Actions (CI on pull requests and the daily production job).
+#
+# This file is SAFE to commit: it holds no secrets. Every secret is read from an environment variable that
+# GitHub Actions fills from the repository secrets (Settings > Secrets and variables > Actions):
+#   SNOWFLAKE_ACCOUNT       account identifier (e.g. abc12345.ap-south-1)
+#   SNOWFLAKE_USER          DBT_USER (the service user, key-pair only)
+#   SNOWFLAKE_PRIVATE_KEY   the full text of github_actions_key.p8, including its first and last lines
+# Your own laptop keeps using ~/.dbt/profiles.yml (targets dev and prod) as before.
+#
+# The workflows point dbt here with DBT_PROFILES_DIR=ci.
+
+godesi:
+  target: ci
+  outputs:
+
+    # pull requests: a throw-away schema per PR, e.g. CI_PR_12 (dropped at the end of the run)
+    ci:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key: "{{ env_var('SNOWFLAKE_PRIVATE_KEY') }}"
+      role: TRANSFORMER
+      warehouse: GODESI_WH
+      database: GODESI_ANALYTICS
+      schema: "{{ env_var('DBT_CI_SCHEMA', 'CI_PR_LOCAL') }}"
+      threads: 4
+      query_tag: dbt_ci            # every CI query is tagged, so the cost review can find it
+
+    # the daily production job: same models and schemas as your local prod target
+    prod:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT') }}"
+      user: "{{ env_var('SNOWFLAKE_USER') }}"
+      private_key: "{{ env_var('SNOWFLAKE_PRIVATE_KEY') }}"
+      role: TRANSFORMER
+      warehouse: GODESI_WH
+      database: GODESI_ANALYTICS
+      schema: STAGING
+      threads: 4
+      query_tag: dbt_prod_daily

@@ -1,0 +1,90 @@
+# dbt CI: runs on every pull request to main.
+#   1. lint the SQL with SQLFluff
+#   2. build and test the project in a throw-away schema CI_PR_<number>
+#      - slim CI: only the models the PR changed (and their children); everything else is read from prod (--defer)
+#      - if there is no production manifest yet, it builds everything
+#   3. drop the CI schema, even when the build failed
+# Secrets (Settings > Secrets and variables > Actions): SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER, SNOWFLAKE_PRIVATE_KEY.
+
+name: dbt CI
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:                       # a new push to the same PR cancels the older run
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: read                    # to download the production manifest saved by the daily job
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}/ci
+  DBT_CI_SCHEMA: CI_PR_${{ github.event.pull_request.number || github.run_number }}
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+
+jobs:
+  dbt-ci:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: godesi
+
+    steps:
+      - name: Check out the pull request
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ci/requirements-ci.txt
+
+      - name: Install dbt and SQLFluff
+        run: pip install -r ../ci/requirements-ci.txt
+
+      - name: dbt deps
+        run: dbt deps
+
+      - name: dbt debug (can we reach Snowflake?)
+        run: dbt debug --target ci
+
+      - name: Lint SQL with SQLFluff
+        working-directory: .
+        run: sqlfluff lint godesi/models godesi/tests godesi/analyses godesi/snapshots --processes 4
+
+      - name: Download the production manifest (for slim CI)
+        id: state
+        working-directory: .
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id=$(gh run list --workflow daily.yml --branch main --status success --limit 1 \
+                   --json databaseId --jq '.[0].databaseId // empty')
+          if [ -n "$run_id" ] && gh run download "$run_id" --name prod-manifest --dir godesi/prod_state; then
+            echo "Using the manifest of daily run $run_id"
+            echo "found=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No production manifest yet: CI builds the whole project."
+            echo "found=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: dbt build - slim CI (changed models and their children)
+        if: steps.state.outputs.found == 'true'
+        run: dbt build --target ci --select state:modified+ --defer --state prod_state
+
+      - name: dbt build - full project
+        if: steps.state.outputs.found != 'true'
+        run: dbt build --target ci
+
+      - name: Drop the CI schema
+        if: always()
+        run: |
+          dbt run-operation drop_ci_schema --args "{schema_name: ${DBT_CI_SCHEMA}}" --target ci

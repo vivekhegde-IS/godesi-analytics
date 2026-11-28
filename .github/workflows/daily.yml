@@ -1,0 +1,104 @@
+# Daily production run, every day at 06:00 IST (00:30 UTC), and on demand (Actions > Daily production run > Run workflow).
+#   1. dbt source freshness  - is the raw data recent? (reported as a warning, see the note below)
+#   2. dbt build --target prod - models, snapshot and all tests in STAGING / INTERMEDIATE / MARTS
+#   3. save the production manifest - slim CI compares pull requests with it
+#   4. export the dashboard data and commit the CSVs if they changed - the public Streamlit app redeploys by itself
+# Note on freshness: the raw data of this portfolio project was loaded once, so freshness is stale by design and
+# would stop every run. In a real company step 1 must STOP the run (remove continue-on-error) so stale data is
+# never published as if it were new.
+
+name: Daily production run
+
+on:
+  schedule:
+    - cron: "30 0 * * *"
+  workflow_dispatch:
+
+concurrency:                       # never two production runs at the same time
+  group: daily-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: write                  # to commit the refreshed dashboard CSVs
+
+env:
+  DBT_PROFILES_DIR: ${{ github.workspace }}/ci
+  SNOWFLAKE_ACCOUNT: ${{ secrets.SNOWFLAKE_ACCOUNT }}
+  SNOWFLAKE_USER: ${{ secrets.SNOWFLAKE_USER }}
+  SNOWFLAKE_PRIVATE_KEY: ${{ secrets.SNOWFLAKE_PRIVATE_KEY }}
+
+jobs:
+  production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: ci/requirements-ci.txt
+
+      - name: Install dbt
+        run: pip install -r ci/requirements-ci.txt
+
+      - name: dbt deps
+        working-directory: godesi
+        run: dbt deps
+
+      - name: Source freshness
+        id: freshness
+        continue-on-error: true
+        working-directory: godesi
+        run: dbt source freshness --target prod
+
+      - name: dbt build (production)
+        working-directory: godesi
+        run: dbt build --target prod
+
+      - name: Save the production manifest (for slim CI)
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-manifest
+          path: godesi/target/manifest.json
+          retention-days: 30
+
+      - name: Save the run results (for debugging)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dbt-run-results
+          path: |
+            godesi/target/run_results.json
+            godesi/target/sources.json
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Export the dashboard data
+        run: python scripts/export_marts.py
+
+      - name: Commit the CSVs if they changed
+        run: |
+          if git diff --quiet -- dashboard/streamlit/marts; then
+            echo "No data changes today."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add dashboard/streamlit/marts
+          git commit -m "chore(data): daily export of the dashboard marts"
+          git push
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Daily production run" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source freshness: ${{ steps.freshness.outcome }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Job status: ${{ job.status }}" >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ steps.freshness.outcome }}" = "failure" ]; then
+            echo "::warning::Source freshness failed: the raw data is older than the error threshold (72 h)."
+          fi

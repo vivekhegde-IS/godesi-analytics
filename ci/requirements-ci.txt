@@ -1,0 +1,7 @@
+# Packages for GitHub Actions (CI and the daily production job). Same versions as the project venv.
+dbt-core==1.12.7
+dbt-snowflake==1.12.5
+sqlfluff==4.5.0
+sqlfluff-templater-dbt==4.5.0
+pandas>=2.2
+pyyaml>=6.0
