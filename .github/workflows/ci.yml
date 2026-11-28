@@ -67,7 +67,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           run_id=$(gh run list --workflow daily.yml --branch main --status success --limit 1 \
-                   --json databaseId --jq '.[0].databaseId // empty')
+                   --json databaseId --jq '.[0].databaseId // empty' 2>/dev/null || true)
+          # "|| true" above: before daily.yml is on main, gh answers HTTP 404, which must not fail this step
           if [ -n "$run_id" ] && gh run download "$run_id" --name prod-manifest --dir godesi/prod_state; then
             echo "Using the manifest of daily run $run_id"
             echo "found=true" >> "$GITHUB_OUTPUT"
