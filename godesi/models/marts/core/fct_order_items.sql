@@ -94,5 +94,5 @@ select * from final
 
 {% if is_incremental() %}
 -- only lines that changed after the newest change already in this table
-where row_updated_at > (select max(row_updated_at) from {{ this }})
+where row_updated_at > (select max(existing.row_updated_at) from {{ this }} as existing)
 {% endif %}

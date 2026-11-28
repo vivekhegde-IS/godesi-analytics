@@ -31,7 +31,7 @@ festival_windows as (
         on d.date_day between dateadd(day, -10, f.festival_date) and f.festival_date
     qualify row_number() over (
         partition by d.date_day
-        order by f.is_major desc, f.festival_date
+        order by f.is_major desc, f.festival_date asc
     ) = 1
 
 )

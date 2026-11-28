@@ -1,0 +1,22 @@
+# pre-commit: checks that run on YOUR laptop every time you `git commit`, before the commit is made.
+# Install once (with the project venv active):  pip install pre-commit   then   pre-commit install
+# Run on everything by hand:                    pre-commit run --all-files
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: detect-private-key          # blocks a commit that contains a private key (e.g. rsa_key.p8)
+      - id: check-yaml                  # every .yml parses
+      - id: check-added-large-files     # nothing over 20 MB by mistake (the .pbix is about 18 MB)
+        args: ["--maxkb=20000"]
+      - id: check-merge-conflict
+
+  - repo: local
+    hooks:
+      - id: sqlfluff-lint
+        name: SQLFluff lint (dbt SQL)
+        entry: sqlfluff lint
+        language: system                # uses the sqlfluff installed in the active project venv
+        types: [sql]
+        files: ^godesi/(models|tests|analyses|snapshots)/
+        require_serial: true

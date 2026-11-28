@@ -1,0 +1,5 @@
+# folders SQLFluff must not lint
+godesi/target/
+godesi/dbt_packages/
+godesi/logs/
+.venv/

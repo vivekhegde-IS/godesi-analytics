@@ -1,6 +1,6 @@
 promo_code,promo_name,promo_channel,discount_pct,start_date,end_date,avg_daily_revenue_during,avg_daily_revenue_before,revenue_uplift_pct,orders_with_code,discount_given_inr,has_no_full_before_period
-WELCOME10,First order discount,d2c,10.00,2024-01-01,2025-12-31,11300.22393981,0E-8,,1758,134711.80,True
 FREESHIP,Free shipping above 499,d2c,5.00,2024-01-01,2025-12-31,11300.22393981,0E-8,,1759,64133.35,True
+WELCOME10,First order discount,d2c,10.00,2024-01-01,2025-12-31,11300.22393981,0E-8,,1758,134711.80,True
 SANKRANTI24,Sankranti 2024 offer,all,5.00,2024-01-08,2024-01-16,50653.11666667,11461.19107143,342.0,196,7763.30,True
 REPUBLICDAY24,Republicday 2024 offer,all,5.00,2024-01-19,2024-01-27,40377.28444444,30810.54464286,31.1,167,5764.79,True
 HOLI24,Holi 2024 offer,all,20.00,2024-03-18,2024-03-26,77693.63333333,45574.21964286,70.5,314,49173.50,False

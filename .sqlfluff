@@ -1,0 +1,22 @@
+# SQLFluff: lints the dbt SQL on every pull request (and before each commit with pre-commit).
+# Phase 7 enforces the rules that catch real mistakes: ambiguous SQL (AM), unclear references (RF),
+# keyword/function capitalisation (CP), convention rules (CV) and structure rules (ST).
+# Layout rules (LT01 spacing/alignment, LT02 indentation) are off for now: the project uses an aligned
+# style, and turning them on means one big "sqlfluff fix" formatting PR. That is a later, separate change.
+[sqlfluff]
+templater = dbt
+dialect = snowflake
+max_line_length = 130
+exclude_rules = LT01, LT02, LT09, LT14, ST06, AL09, AM04, RF04
+# LT09 select targets on one line, LT14 keyword on a new line (layout), ST06 column order, AL09 self-alias (a.x as x is explicit on purpose),
+# AM04 'select * from final' (the standard dbt CTE pattern), RF04 source columns named like keywords
+
+[sqlfluff:templater:dbt]
+project_dir = godesi
+
+[sqlfluff:rules:capitalisation.keywords]
+capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.functions]
+extended_capitalisation_policy = lower
+[sqlfluff:rules:capitalisation.literals]
+capitalisation_policy = lower

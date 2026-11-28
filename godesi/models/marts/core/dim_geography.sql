@@ -4,9 +4,9 @@
 with cities as (
 
     select city, state from {{ ref('stg_ecom__customers') }}
-    union
+    union distinct
     select city, state from {{ ref('stg_erp__stores') }}
-    union
+    union distinct
     select city, state from {{ ref('stg_erp__distributors') }}
 
 )
