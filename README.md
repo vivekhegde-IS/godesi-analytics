@@ -1,12 +1,15 @@
 # GoDesi Sales & Distribution Analytics
 
+[![dbt CI](https://github.com/vivekhegde-IS/godesi-analytics/actions/workflows/ci.yml/badge.svg)](https://github.com/vivekhegde-IS/godesi-analytics/actions/workflows/ci.yml)
+[![Daily production run](https://github.com/vivekhegde-IS/godesi-analytics/actions/workflows/daily.yml/badge.svg)](https://github.com/vivekhegde-IS/godesi-analytics/actions/workflows/daily.yml)
+
 An independent analytics project for **GoDesi**, a Bengaluru-based snack and mithai brand.
 It combines real product data from Open Food Facts with synthetic sales data, and models it
 with **dbt on Snowflake** into a tested star schema that answers real business questions
 for dashboards.
 
-> **Status:** Phases 0-6 complete (setup, data loading, dbt modeling, testing, documentation, analysis and dashboard).
-> Next: Phase 7 (CI and scheduling).
+> **Status:** complete. Phases 0-7: setup, data loading, dbt modeling, testing, documentation, analysis and
+> dashboards, CI/CD with a daily production run, and a cost review.
 >
 > 📊 **Live dashboard: https://godesi-analytics.streamlit.app/** · 📝 **[Insights report for the founder](docs/insights.md)**
 
@@ -50,6 +53,7 @@ Each finding has its number, chart and recommendation in **[docs/insights.md](do
 | Data generation | Python (pandas, numpy, faker) |
 | Dashboard | Streamlit (in Snowflake + Community Cloud), Plotly; Power BI Desktop (Import) |
 | Version control | Git and GitHub (feature branches and pull requests) |
+| CI/CD | GitHub Actions (dbt CI with slim CI, daily production job), SQLFluff, pre-commit |
 
 ## Architecture
 
@@ -111,6 +115,26 @@ nutrition values in Open Food Facts.
 **Analysis queries:** one SQL file per question in `godesi/analyses/` (`dbt compile -s "path:analyses"`).
 They produce the numbers in the insights report, and the dashboard matches them (net revenue INR 18,76,44,075; 75,118 orders; AOV INR 2,498).
 
+## CI/CD and scheduling
+
+```
+pull request ──> dbt CI (GitHub Actions)                      main ──> daily production run, 06:00 IST
+                 1. SQLFluff lint                                      1. dbt source freshness
+                 2. dbt build in schema CI_PR_<number>                 2. dbt build --target prod (all tests)
+                    slim CI: only changed models + children,           3. save manifest.json (for slim CI)
+                    everything else read from prod (--defer)           4. export marts -> commit CSVs
+                 3. drop CI_PR_<number>                                   -> public app redeploys
+```
+
+- **Every pull request** is linted and built in its own throw-away schema (`CI_PR_<number>`), and must pass before it
+  is merged. **Slim CI** compares the PR with the production manifest (`state:modified+ --defer`): a one-model change
+  runs 1 model and its tests in about 6 seconds instead of the full build (about 40 seconds, 191 nodes).
+- **Daily at 06:00 IST** the production job checks source freshness, builds and tests prod, and refreshes the CSVs of
+  the public dashboard, so the public app and the live Snowflake app always show the same numbers.
+- **Before every commit**, `pre-commit` runs SQLFluff and blocks private keys, broken YAML and huge files.
+- GitHub connects with its **own key pair** (`RSA_PUBLIC_KEY_2` on the service user), stored as repository secrets;
+  `ci/profiles.yml` only reads environment variables. Setup: `setup/06_github_actions.sql`, `scripts/make_key_pair.py`.
+
 ## Testing and data quality
 
 Every `dbt build` runs **144 data tests and 1 unit test**:
@@ -150,6 +174,12 @@ dbt source freshness         # stop here if the raw data is stale
 dbt build                    # models + snapshots + all tests, in dependency order
 dbt build --target prod      # the production schemas
 ```
+Lint before you push (the same checks CI runs):
+```bash
+pip install -r ci/requirements-ci.txt pre-commit
+pre-commit install           # SQLFluff + secret and YAML checks on every commit
+sqlfluff lint godesi/models
+```
 Connection details live in `~/.dbt/profiles.yml` (not in this repo); dbt connects as a service user with a key pair.
 
 ## Security and cost setup
@@ -162,6 +192,8 @@ Connection details live in `~/.dbt/profiles.yml` (not in this repo); dbt connect
 - An X-Small warehouse with a 60-second auto-suspend, and a **resource monitor** that caps monthly credits.
 - The setup is a rerunnable script: `setup/01_snowflake_setup.sql`. Role access tests are in `setup/02_role_tests.sql`.
 - The dashboard only ever uses **REPORTER** (in Snowflake and in Power BI); customer names, emails and pincodes are never exported.
+- **Cost:** see [docs/cost_review.md](docs/cost_review.md): credits per day and per workload (CI, daily job, dashboards),
+  storage, and the monthly estimate. Every automated query carries a `query_tag` so its cost can be traced.
 
 ## Data sources
 
@@ -175,7 +207,9 @@ Connection details live in `~/.dbt/profiles.yml` (not in this repo); dbt connect
 
 ```
 setup/              Snowflake setup, role tests and raw-data load scripts (SQL)
-scripts/            Python data generator and load-script builders
+.github/workflows/  ci.yml (pull requests) and daily.yml (production at 06:00 IST)
+ci/                 GitHub Actions dbt profile (env vars only) and requirements
+scripts/            data generator, load-script builders, export_marts.py, make_key_pair.py
 dashboard/          Streamlit app (app.py, queries.py, exported marts) and Power BI model files
 godesi/             dbt project
   models/staging/       one folder per source system
@@ -184,7 +218,7 @@ godesi/             dbt project
   models/docs.md        project overview and KPI definitions
   seeds/                brand, channel and city mappings, festival calendar
   snapshots/            product price snapshot
-  macros/               safe_divide, standardize_city, limit_in_dev, generate_schema_name
+  macros/               safe_divide, standardize_city, limit_in_dev, generate_schema_name, drop_ci_schema
   tests/                singular tests
   analyses/             Q1-Q9 analysis queries
 docs/               Insights report, diagrams and dashboard screenshots
@@ -200,7 +234,20 @@ data/               Local data files (ignored by git)
 - [x] Phase 4: data modeling (staging, intermediate, star schema)
 - [x] Phase 5: testing and documentation
 - [x] Phase 6: analysis, dashboard (Streamlit + Power BI) and insights report
-- [ ] Phase 7: CI, scheduling and cost review
+- [x] Phase 7: CI (with slim CI), daily production run, SQLFluff and pre-commit, cost review
+
+## What I learned
+
+- **Tests find real problems.** Business-rule tests caught impossible nutrition values and a timezone bug in price
+  changes; building the dashboards caught brand names counted twice because Snowflake compares text case-sensitively.
+- **An average can hide the story.** Month-1 retention is 22% overall, but 34% for 2024 customers and 12.5% for 2025
+  ones: the data starts in 2024, so early "new" customers were not new (left-censoring).
+- **KPIs are ratios of sums.** AOV, margin and retention are always total / total, never an average of averages.
+- **One definition, many tools.** The same numbers in dbt, Power BI (DAX) and Streamlit, checked against each other.
+- **Least privilege and secrets hygiene.** Separate roles, key-pair service users, a separate key for GitHub, and
+  pre-commit blocking private keys.
+- **Cost is a design choice.** X-Small with 60 s auto-suspend, incremental models, slim CI, Import mode in Power BI,
+  and query tags to see who spends what.
 
 ## Author
 
