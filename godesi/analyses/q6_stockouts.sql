@@ -7,5 +7,5 @@ select
     round(avg(network_days_of_cover), 1)                       as avg_network_days_of_cover,
     count_if(network_days_of_cover > 90)                       as overstock_warehouse_sku_days   -- > 3 months of stock
 from {{ ref('fct_inventory_daily') }}
-group by 1
+group by snapshot_month
 order by stockout_warehouse_sku_days desc
