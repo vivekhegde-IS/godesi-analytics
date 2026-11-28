@@ -1,7 +1,8 @@
 -- Real products sold in India, from Open Food Facts (ODbL licence).
 -- Grain: one row per barcode.
 -- Keeps ~35 useful columns out of 211 and cleans the real-world mess:
---   * brands: many spellings (Haldiram's / haldirams / Haldiram Snacks Pvt. Ltd.) -> brand_mapping seed
+--   * brands: many spellings (Haldiram's / haldirams / Haldiram Snacks Pvt. Ltd.) -> brand_mapping seed;
+--     other brands -> their most common spelling (Apis / apis -> Apis)
 --   * quantity: free text ('500 g', '1kg', '200 gm', '1 Ltr') -> net_quantity + quantity_unit (g or ml)
 --   * tags: 'en:' language prefixes removed from the main category
 --   * Nutri-Score: 'unknown' / 'not-applicable' -> NULL
@@ -93,13 +94,32 @@ base as (
 
 ),
 
+brand_spelling as (
+
+    -- Brands that are not in the seed are often written in several cases (Apis / apis, Chupa Chups /
+    -- CHUPA CHUPS). Snowflake compares text case-sensitively, so they counted as separate brands.
+    -- One spelling per brand_key: prefer mixed case (Apis over apis or APIS), then the most common one,
+    -- then alphabetical. Keys with no letters or digits (e.g. names in Devanagari) are left as written.
+    select
+        brand_key,
+        brand_raw                                                as brand_spelling
+    from base
+    where brand_raw is not null and brand_key <> ''
+    group by brand_key, brand_raw
+    qualify row_number() over (
+        partition by brand_key
+        order by iff(brand_raw in (lower(brand_raw), upper(brand_raw)), 1, 0), count(*) desc, brand_raw
+    ) = 1
+
+),
+
 cleaned as (
 
     select
         b.*,
 
-        -- brand: seed mapping first, otherwise the first listed brand as written
-        coalesce(m.brand, b.brand_raw)                           as brand,
+        -- brand: seed mapping first, otherwise the most common spelling of the same brand key
+        coalesce(m.brand, s.brand_spelling, b.brand_raw)         as brand,
         coalesce(m.brand = 'GoDesi', false)                      as is_godesi,
 
         -- quantity in a standard unit: grams for solids, millilitres for liquids
@@ -118,6 +138,8 @@ cleaned as (
     from base as b
     left join brand_map as m
         on b.brand_key = m.brand_key
+    left join brand_spelling as s
+        on b.brand_key = s.brand_key
 
 )
 

@@ -5,8 +5,10 @@ It combines real product data from Open Food Facts with synthetic sales data, an
 with **dbt on Snowflake** into a tested star schema that answers real business questions
 for dashboards.
 
-> 🚧 **Status:** Phases 0-5 complete (setup, data loading, dbt modeling, testing and documentation).
-> Next: Phase 6 (dashboard) and Phase 7 (CI and scheduling).
+> **Status:** Phases 0-6 complete (setup, data loading, dbt modeling, testing, documentation, analysis and dashboard).
+> Next: Phase 7 (CI and scheduling).
+>
+> 📊 **Live dashboard: https://godesi-analytics.streamlit.app/** · 📝 **[Insights report for the founder](docs/insights.md)**
 
 ---
 
@@ -23,16 +25,19 @@ for dashboards.
 | Q7 | Do festival promos (Diwali, Raksha Bandhan, Holi) lift revenue? | `mart_promo_impact` |
 | Q8-Q9 | How does GoDesi's range compare with competitors on nutrition and category? | `mart_market_landscape`, `mart_category_growth` |
 
-## Key findings so far
+## Key findings
 
-- Net revenue grew **+30%** from 2024 to 2025 (INR 18.76 crore over two years, cancelled orders excluded).
-- **Offline** (kirana and modern trade) brings about **77%** of revenue at a 24.9% gross margin.
-- **West** is the fastest-growing region (+44%).
-- **12-month retention is 13.3%**; average customer lifetime value is about INR 3,120.
-- **Diwali 2025** promo days averaged **+131%** daily revenue versus the 28 days before.
-- Several SKUs **stocked out in October 2025**, just before the festive peak.
-- In the real Open Food Facts market data, GoDesi ranks **8th of 346 brands** in Sweets & mithai,
+- Net revenue grew **+30.4%** from 2024 to 2025 (INR 18.76 crore over two years, cancelled orders excluded).
+- **Offline** (kirana and modern trade) brings about **77%** of revenue at a 24.9% gross margin; online channels earn about 45%.
+- **29 of 60 SKUs make 80%** of revenue; the top 10 are all mithai.
+- **West** is the fastest-growing region (+44%) and has the best margin, because 41% of its revenue is online.
+- **22.2%** of customers order again in month 1 and **14.3%** in month 12 (12-month revenue per customer INR 3,162), but newer cohorts repeat much less: month-1 retention fell from **34%** (2024 cohorts) to **12.5%** (2025 cohorts).
+- **Diwali 2025** promo days averaged **+131%** daily revenue versus the 28 days before; 9 of 26 promos had negative uplift.
+- **All 60 SKUs stocked out somewhere in October 2025** (681 warehouse-SKU-days, 9.4 days of cover), just before the festive peak.
+- In the real Open Food Facts market data, GoDesi ranks joint **11th of 317 brands** in Sweets & mithai,
   with a median sugar content of 59.3 g per 100 g.
+
+Each finding has its number, chart and recommendation in **[docs/insights.md](docs/insights.md)**.
 
 *All sales figures come from synthetic data; the market comparison uses real Open Food Facts data.*
 
@@ -43,7 +48,7 @@ for dashboards.
 | Warehouse | Snowflake |
 | Transformation | dbt Core 1.12 + dbt_utils |
 | Data generation | Python (pandas, numpy, faker) |
-| Dashboard | Tableau Public (Phase 6) |
+| Dashboard | Streamlit (in Snowflake + Community Cloud), Plotly; Power BI Desktop (Import) |
 | Version control | Git and GitHub (feature branches and pull requests) |
 
 ## Architecture
@@ -66,6 +71,45 @@ GODESI_RAW (bronze)            GODESI_ANALYTICS
 (Bangalore / BENGALURU / "Bengaluru "), duplicate marketplace orders, two timestamp formats,
 prices as text ("Rs. 120.00"), late status updates, price changes over time, and impossible
 nutrition values in Open Food Facts.
+
+## Dashboard
+
+**Live: https://godesi-analytics.streamlit.app/**. Six tabs, filtered by year, channel and region:
+
+| Tab | Questions | What it shows |
+|---|---|---|
+| Executive overview | Q1, Q2 | KPIs vs last year, monthly revenue with festival months, channel mix |
+| Products | Q3 | Top 10 SKUs, Pareto curve, category margin, new launches |
+| Channels & regions | Q2, Q4 | Channel table (margin, discount, returns), region growth, fastest cities |
+| Customers & promotions | Q5, Q7 | Cohort retention heatmap, LTV curve, new vs returning, promo uplift |
+| Supply & market | Q6, Q8, Q9 | Stock-out days and cover, brands in the segment, new products per year |
+| About the data | | Sources, definitions, limitations |
+
+![Executive overview](docs/dashboard/streamlit_overview.png)
+
+<details>
+<summary>More screenshots</summary>
+
+![Products](docs/dashboard/streamlit_products.png)
+![Channels & regions](docs/dashboard/streamlit_channels.png)
+![Customers & promotions](docs/dashboard/streamlit_customers.png)
+![Supply & market](docs/dashboard/streamlit_supply_market.png)
+
+</details>
+
+**One app, two places to run it** (`dashboard/streamlit/`):
+- **Inside Snowflake (Streamlit in Snowflake):** reads the marts **live** through the Snowpark session, owned by the
+  read-only **REPORTER** role. Setup: `setup/05_streamlit_app.sql`.
+- **Public (Streamlit Community Cloud):** the same `app.py` reads small CSV exports of the marts
+  (`dashboard/streamlit/marts/`, under 1 MB, no customer personal data), so the link keeps working without Snowflake
+  credentials or credits. Refresh them with `python scripts/export_marts.py`.
+- All SQL lives in `queries.py`; the live and exported data were checked to be identical.
+
+**Power BI version:** `dashboard/GoDesi_Sales_Analytics.pbix` (Import mode, REPORTER role): a star schema with
+9 relationships and DAX measures (net revenue, margin %, AOV, YoY, retention) written as code in `dashboard/model/`.
+
+**Analysis queries:** one SQL file per question in `godesi/analyses/` (`dbt compile -s "path:analyses"`).
+They produce the numbers in the insights report, and the dashboard matches them (net revenue INR 18,76,44,075; 75,118 orders; AOV INR 2,498).
 
 ## Testing and data quality
 
@@ -93,7 +137,7 @@ for the ERP owner), because the fix belongs in the source system, not in dbt.
 - Every column of the 18 mart models is described; KPI definitions (net revenue, gross margin %,
   AOV, retention, days of cover, promo uplift) live once in `models/docs.md` and are reused everywhere.
 - Descriptions are also written to Snowflake as table and column comments (`persist_docs`).
-- The dashboard is registered as a dbt **exposure**, so the lineage graph runs from raw sources to the dashboard.
+- The dashboard is registered as a dbt **exposure** (with its URL), so the lineage graph runs from raw sources to the dashboard.
 - Browse it locally: `dbt docs generate` then `dbt docs serve`.
 
 ## How to run
@@ -117,6 +161,7 @@ Connection details live in `~/.dbt/profiles.yml` (not in this repo); dbt connect
 - dbt connects as a **service user** with key-pair authentication. No passwords or keys are stored in this repo.
 - An X-Small warehouse with a 60-second auto-suspend, and a **resource monitor** that caps monthly credits.
 - The setup is a rerunnable script: `setup/01_snowflake_setup.sql`. Role access tests are in `setup/02_role_tests.sql`.
+- The dashboard only ever uses **REPORTER** (in Snowflake and in Power BI); customer names, emails and pincodes are never exported.
 
 ## Data sources
 
@@ -131,6 +176,7 @@ Connection details live in `~/.dbt/profiles.yml` (not in this repo); dbt connect
 ```
 setup/              Snowflake setup, role tests and raw-data load scripts (SQL)
 scripts/            Python data generator and load-script builders
+dashboard/          Streamlit app (app.py, queries.py, exported marts) and Power BI model files
 godesi/             dbt project
   models/staging/       one folder per source system
   models/intermediate/  unions, SCD2 price history, enrichment
@@ -140,7 +186,8 @@ godesi/             dbt project
   snapshots/            product price snapshot
   macros/               safe_divide, standardize_city, limit_in_dev, generate_schema_name
   tests/                singular tests
-docs/               Diagrams and screenshots
+  analyses/             Q1-Q9 analysis queries
+docs/               Insights report, diagrams and dashboard screenshots
 data/               Local data files (ignored by git)
 ```
 
@@ -152,7 +199,7 @@ data/               Local data files (ignored by git)
 - [x] Phase 3: dbt project setup
 - [x] Phase 4: data modeling (staging, intermediate, star schema)
 - [x] Phase 5: testing and documentation
-- [ ] Phase 6: analysis and dashboard
+- [x] Phase 6: analysis, dashboard (Streamlit + Power BI) and insights report
 - [ ] Phase 7: CI, scheduling and cost review
 
 ## Author

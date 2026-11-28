@@ -8,12 +8,14 @@ exposures:
   - name: godesi_sales_dashboard
     label: GoDesi Sales & Distribution Dashboard
     type: dashboard
-    maturity: medium
+    maturity: high
+    url: https://godesi-analytics.streamlit.app/
     description: >
-      Dashboard for the GoDesi founder: revenue growth and channel mix (Q1-Q2), product and new-launch
-      performance (Q3), regions (Q4), customer cohorts and retention (Q5), inventory stock-outs (Q6),
+      Streamlit dashboard for the GoDesi founder: revenue growth and channel mix (Q1-Q2), product and
+      new-launch performance (Q3), regions (Q4), customer cohorts and retention (Q5), inventory stock-outs (Q6),
       promo uplift (Q7) and the competitive market from Open Food Facts (Q8-Q9).
-      The public link is added in Phase 6.
+      It runs inside Snowflake (Streamlit in Snowflake, live on the marts as REPORTER) and publicly on
+      Streamlit Community Cloud from exported marts. A Power BI version (Import mode) uses the same models.
     depends_on:
       - ref('mart_sales_daily')
       - ref('mart_channel_performance')
@@ -21,8 +23,10 @@ exposures:
       - ref('mart_customer_cohorts')
       - ref('mart_promo_impact')
       - ref('fct_inventory_daily')
+      - ref('fct_orders')
       - ref('mart_market_landscape')
       - ref('mart_category_growth')
+      - ref('dim_date')
       - ref('dim_products')
       - ref('dim_geography')
     owner:

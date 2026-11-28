@@ -1,0 +1,41 @@
+/// GoDesi star schema relationships (Power BI TMDL).
+/// Paste into Power BI Desktop > TMDL view and click Apply.
+/// fromColumn = many side (fact), toColumn = one side (dimension); defaults are many-to-one, single direction.
+/// Turn OFF "Autodetect new relationships" first, or delete auto-created ones (ambiguous-path error otherwise).
+createOrReplace
+
+	relationship rel_items_date
+		fromColumn: FCT_ORDER_ITEMS.ORDER_DATE
+		toColumn: DIM_DATE.DATE_DAY
+
+	relationship rel_items_product
+		fromColumn: FCT_ORDER_ITEMS.SKU_ID
+		toColumn: DIM_PRODUCTS.SKU_ID
+
+	relationship rel_items_channel
+		fromColumn: FCT_ORDER_ITEMS.PLATFORM
+		toColumn: DIM_CHANNEL.PLATFORM
+
+	relationship rel_items_city
+		fromColumn: FCT_ORDER_ITEMS.CITY
+		toColumn: DIM_GEOGRAPHY.CITY
+
+	relationship rel_orders_date
+		fromColumn: FCT_ORDERS.ORDER_DATE
+		toColumn: DIM_DATE.DATE_DAY
+
+	relationship rel_orders_channel
+		fromColumn: FCT_ORDERS.PLATFORM
+		toColumn: DIM_CHANNEL.PLATFORM
+
+	relationship rel_orders_city
+		fromColumn: FCT_ORDERS.CITY
+		toColumn: DIM_GEOGRAPHY.CITY
+
+	relationship rel_inventory_date
+		fromColumn: FCT_INVENTORY_DAILY.SNAPSHOT_DATE
+		toColumn: DIM_DATE.DATE_DAY
+
+	relationship rel_inventory_product
+		fromColumn: FCT_INVENTORY_DAILY.SKU_ID
+		toColumn: DIM_PRODUCTS.SKU_ID
