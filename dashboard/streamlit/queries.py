@@ -19,7 +19,7 @@ QUERIES = {
                sum(gross_margin_inr) as gross_margin_inr, sum(refund_inr) as refund_inr
         from {M}.MART_SALES_DAILY
         group by all
-        order by year_month, channel, platform, city""",
+        order by year_month, channel, platform, region, state, city""",
     # one row per month: does it contain a major festival window, and which festivals
     "months": f"""
         select year_month,
@@ -40,7 +40,7 @@ QUERIES = {
         where not is_cancelled and customer_id is not null
         group by all
         order by 1, 2""",
-    "promo_impact": f"select * from {M}.MART_PROMO_IMPACT order by start_date",
+    "promo_impact": f"select * from {M}.MART_PROMO_IMPACT order by start_date, promo_code",
     # stock-outs and cover per month (Q6)
     "inventory_monthly": f"""
         select to_char(snapshot_date, 'YYYY-MM') as year_month,
@@ -50,6 +50,6 @@ QUERIES = {
         from {M}.FCT_INVENTORY_DAILY
         group by 1
         order by 1""",
-    "market_landscape": f"select * from {M}.MART_MARKET_LANDSCAPE order by market_segment, brand_rank_in_segment",
+    "market_landscape": f"select * from {M}.MART_MARKET_LANDSCAPE order by market_segment, brand_rank_in_segment, brand",
     "category_growth": f"select * from {M}.MART_CATEGORY_GROWTH order by market_segment, listed_year",
 }

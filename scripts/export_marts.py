@@ -7,9 +7,13 @@ app runs live inside Snowflake). Only aggregated mart data: no customer names, e
 Run from the repo root with the project venv (it has the Snowflake connector):
     .venv\\Scripts\\python.exe scripts\\export_marts.py
 
-Connection: read from ~/.dbt/profiles.yml (target "prod": account, user, key pair, role).
+Connection, in this order:
+  1. GitHub Actions (the daily job): environment variables SNOWFLAKE_ACCOUNT, SNOWFLAKE_USER and
+     SNOWFLAKE_PRIVATE_KEY (the key text), filled from the repository secrets.
+  2. Your laptop: ~/.dbt/profiles.yml (target "prod": account, user, key file, role).
 Nothing secret is written to the repo.
 """
+import os
 import sys
 from pathlib import Path
 
@@ -26,13 +30,19 @@ OUT = APP_DIR / "marts"
 
 
 def connect():
-    profile = yaml.safe_load((Path.home() / ".dbt" / "profiles.yml").read_text())
+    common = dict(role="TRANSFORMER", warehouse="GODESI_WH", database="GODESI_ANALYTICS",
+                  session_parameters={"QUERY_TAG": "godesi_dashboard_export"})
+    if os.environ.get("SNOWFLAKE_PRIVATE_KEY"):                    # GitHub Actions
+        from cryptography.hazmat.primitives import serialization
+        key = serialization.load_pem_private_key(os.environ["SNOWFLAKE_PRIVATE_KEY"].encode(), password=None)
+        der = key.private_bytes(serialization.Encoding.DER, serialization.PrivateFormat.PKCS8,
+                                serialization.NoEncryption())
+        return snowflake.connector.connect(account=os.environ["SNOWFLAKE_ACCOUNT"],
+                                           user=os.environ["SNOWFLAKE_USER"], private_key=der, **common)
+    profile = yaml.safe_load((Path.home() / ".dbt" / "profiles.yml").read_text())   # your laptop
     t = profile[PROFILE]["outputs"][TARGET]
-    return snowflake.connector.connect(
-        account=t["account"], user=t["user"], private_key_file=t["private_key_path"],
-        role=t["role"], warehouse=t["warehouse"], database=t["database"],
-        session_parameters={"QUERY_TAG": "godesi_dashboard_export"},
-    )
+    return snowflake.connector.connect(account=t["account"], user=t["user"],
+                                       private_key_file=t["private_key_path"], **common)
 
 
 def main():

@@ -203,6 +203,7 @@ with tab_prod:
                      title="Top 10 products by net revenue",
                      labels={"net_revenue_inr": "Net revenue (₹)", "product_name": ""},
                      color_discrete_sequence=[SAFFRON, "#E39B2D", "#2F5D7C"])
+        fig.update_layout(showlegend=top["category"].nunique() > 1)     # no legend when all 10 are one category
         chart(fig, 420)
     with right:
         fig = go.Figure()
@@ -420,4 +421,9 @@ with tab_about:
   found in Open Food Facts are real.
 - Open Food Facts is crowd-sourced: 64% of products have no category, and the newest year is partial.
 - Two ERP price records are wrong at the source (known data-quality warning, revenue not affected).
+- Retention: the data starts in January 2024, so the early cohorts include customers who were already buying in 2023
+  (left-censoring). Their retention looks higher than a truly new customer's: compare 2025 cohorts for planning.
+- Brands in Open Food Facts are written in many ways (Apis / apis / APIS). dbt keeps one spelling per brand, so
+  GoDesi's rank is counted over real brands (joint 11th of 317 in Sweets & mithai).
+- The public app is refreshed by a daily GitHub Actions job (dbt build, then export); the Snowflake app is always live.
 """)
