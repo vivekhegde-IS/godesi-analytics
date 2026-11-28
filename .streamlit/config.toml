@@ -1,0 +1,8 @@
+# Brand theme for the dashboard. Light base, so the white chart cards look the same for every viewer
+# (Streamlit otherwise follows the viewer's dark mode).
+[theme]
+base = "light"
+primaryColor = "#B4451F"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F6F1EC"
+textColor = "#1F2933"

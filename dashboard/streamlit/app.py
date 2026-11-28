@@ -24,6 +24,9 @@ from queries import QUERIES  # noqa: E402
 DATA = Path(__file__).parent / "marts"
 CHANNEL_COLOURS = {"offline": "#2F5D7C", "marketplace": "#E39B2D", "quick_commerce": "#6A8E3F", "d2c": "#B4451F"}
 SAFFRON, GREY, INK = "#B4451F", "#9AA5B1", "#1F2933"
+AMBER, BLUE, GREEN = "#E39B2D", "#2F5D7C", "#6A8E3F"
+REGION_COLOURS = {"South": SAFFRON, "West": AMBER, "North": BLUE, "East": GREEN}
+PALETTE = [SAFFRON, AMBER, BLUE, GREEN, "#8E5B9A", GREY]
 
 st.set_page_config(page_title="GoDesi Sales Analytics", page_icon="🍬", layout="wide")
 
@@ -105,8 +108,8 @@ def pct(x: float, digits: int = 1) -> str:
     return "-" if pd.isna(x) else f"{x * 100:.{digits}f}%"
 
 
-def chart(fig, height=380):
-    fig.update_layout(template="plotly_white", height=height, margin=dict(l=10, r=10, t=50, b=10), font_color=INK,
+def chart(fig, height=380, right=10):
+    fig.update_layout(template="plotly_white", height=height, margin=dict(l=10, r=right, t=60, b=10), font_color=INK,
                       legend_title_text="", plot_bgcolor="white", paper_bgcolor="white",
                       title_font_color=INK, title_x=0.01)
     # theme=None: keep OUR colours (dark text on white cards). Streamlit's own theme would turn the text
@@ -176,8 +179,10 @@ with tab_over:
         fig = px.bar(mix, x="year", y="share", color="channel", color_discrete_map=CHANNEL_COLOURS,
                      text=mix["share"].map(lambda v: f"{v:.0%}"), title="Channel mix: offline brings ~77%",
                      labels={"year": "", "share": "Share of net revenue"})
+        fig.update_traces(textposition="inside", insidetextanchor="middle", textangle=0)
+        fig.update_layout(uniformtext_minsize=10, uniformtext_mode="hide")
         fig.update_xaxes(type="category")
-        fig.update_yaxes(tickformat=".0%")
+        fig.update_yaxes(tickformat=".0%", range=[0, 1])
         chart(fig)
 
 # ------------------------------------------------------------------ 2. products (Q3)
@@ -207,8 +212,9 @@ with tab_prod:
                         line=dict(color=SAFFRON, width=3))
         fig.update_layout(title="Pareto: how concentrated revenue is", xaxis_title="Products ranked by revenue",
                           yaxis=dict(title="Net revenue (₹)"),
-                          yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 1.02]))
-        chart(fig, 420)
+                          yaxis2=dict(overlaying="y", side="right", tickformat=".0%", range=[0, 1.02]),
+                          legend=dict(orientation="h", y=1.1, x=0))
+        chart(fig, 420, right=50)
 
     cat = p.groupby("category", as_index=False)[["net_revenue_inr", "gross_margin_inr"]].sum()
     cat["gross margin %"] = cat["gross_margin_inr"] / cat["net_revenue_inr"]
@@ -240,11 +246,13 @@ with tab_chan:
         "Share": (ch["net_revenue_inr"] / ch["net_revenue_inr"].sum()).map(pct),
         "Gross margin": (ch["gross_margin_inr"] / ch["net_revenue_inr"]).map(pct),
         "Discount": (ch["discount_inr"] / ch["gross_revenue_inr"]).map(lambda v: pct(v, 2)),
-        "Return rate": (ch["returned_lines"] / ch["order_lines"]).map(lambda v: pct(v, 2)),
+        "Return rate": [("not tracked" if c == "offline" else pct(r / n, 2))
+                        for c, r, n in zip(ch["channel"], ch["returned_lines"], ch["order_lines"])],
         "AOV": (ch["net_revenue_inr"] / ch["orders"]).map(inr),
     })
     st.subheader("Channel trade-off: offline brings the volume, online brings the margin")
     st.dataframe(table.set_index("Channel"), **STRETCH)        # set_index instead of hide_index: works on old Streamlit
+    st.caption("Returns are only recorded for online orders; offline (shops and distributors) has no promo discounts.")
 
     left, right = st.columns(2)
     yoy = sel.pivot_table(index="region", columns="year", values="net_revenue_inr", aggfunc="sum").reset_index()
@@ -253,8 +261,12 @@ with tab_chan:
         with left:
             r = yoy.sort_values("growth")
             fig = px.bar(r, x="growth", y="region", orientation="h", text=r["growth"].map(lambda v: f"{v:+.0%}"),
-                         title="Revenue growth by region, 2025 vs 2024", color_discrete_sequence=[SAFFRON],
-                         labels={"growth": "", "region": ""})
+                         title="Revenue growth by region, 2025 vs 2024", color="region",
+                         color_discrete_map=REGION_COLOURS, labels={"growth": "", "region": ""})
+            fig.update_layout(showlegend=False)
+            fig.update_traces(textposition="outside", cliponaxis=False, textfont_color=INK)
+            fig.update_xaxes(range=[0, r["growth"].max() * 1.2])
+            fig.update_yaxes(categoryorder="total ascending")
             fig.update_xaxes(tickformat=".0%")
             chart(fig, 320)
         with right:
@@ -264,9 +276,10 @@ with tab_chan:
             big["growth"] = big[2025] / big[2024] - 1
             big = big.sort_values("growth").tail(10)
             fig = px.bar(big, x="growth", y="city", color="region", orientation="h",
-                         text=big["growth"].map(lambda v: f"{v:+.0%}"),
+                         text=big["growth"].map(lambda v: f"{v:+.0%}"), color_discrete_map=REGION_COLOURS,
                          title="Fastest-growing cities (2024 revenue ≥ ₹10 lakh)", labels={"growth": "", "city": ""})
-            fig.update_xaxes(tickformat=".0%")
+            fig.update_traces(textposition="outside", cliponaxis=False, textfont_size=11)
+            fig.update_xaxes(tickformat=".0%", range=[0, big["growth"].max() * 1.2])
             fig.update_yaxes(categoryorder="total ascending")
             chart(fig, 320)
     st.caption("Cities with a very small 2024 base are left out of the growth ranking: +400% on ₹5 lakh is not "
@@ -288,23 +301,33 @@ with tab_cust:
     k1.metric("Retention after 1 month", pct(curve.loc[1, "retention"]))
     k2.metric("Retention after 12 months", pct(curve.loc[12, "retention"]))
     k3.metric("12-month value per customer", inr(curve.loc[12, "ltv"]))
+    m1 = c[c["months_since_first_order"] == 1].assign(y=lambda d: d["cohort_month"].str[:4]).groupby("y")[
+        ["active_customers", "cohort_customers"]].sum()
+    m1 = (m1["active_customers"] / m1["cohort_customers"]).to_dict()
     st.caption("Weighted over all cohorts: total active customers / total cohort customers (bigger cohorts count more).")
+    if {"2024", "2025"} <= set(m1):
+        st.info(f"**The average hides a trend:** month-1 retention is **{m1['2024']:.1%}** for customers who started in "
+                f"2024 but only **{m1['2025']:.1%}** for 2025 starters. The data begins in January 2024, so the early "
+                "cohorts include customers who were already buying in 2023 (left-censoring). For a new customer today, "
+                "plan with about 12-15%.")
 
     left, right = st.columns([3, 2])
     with left:
-        heat = cohorts[cohorts["months_since_first_order"] > 0].pivot(     # month 0 is always 100%
+        heat = cohorts[cohorts["months_since_first_order"].between(1, 12)].pivot(   # month 0 is always 100%
             index="cohort_month", columns="months_since_first_order", values="retention_pct")
-        fig = px.imshow(heat, color_continuous_scale=["#FFFFFF", "#F1E4DC", SAFFRON], aspect="auto",
-                        labels=dict(x="Months since first order", y="Cohort (first-order month)", color="Retention %"),
-                        title="Cohort retention: about 1 in 5 customers come back each month")
-        fig.update_xaxes(showgrid=False)
-        fig.update_yaxes(showgrid=False)
-        chart(fig, 460)
+        heat.index = heat.index.str[:7]
+        fig = px.imshow(heat, color_continuous_scale=["#FFFFFF", AMBER, SAFFRON], aspect="auto", text_auto=".0f",
+                        labels=dict(x="", y="", color="Retention %"),
+                        title="Cohort retention % by months since first order (1-12): newer cohorts come back less")
+        fig.update_traces(textfont_size=9)
+        fig.update_xaxes(showgrid=False, dtick=1, side="top", type="category")
+        fig.update_yaxes(showgrid=False, type="category", tickfont_size=10, title="first-order month")
+        chart(fig, 560)
     with right:
         fig = px.line(curve.reset_index(), x="months_since_first_order", y="ltv", markers=True,
                       title="Value per customer over time (LTV curve)", color_discrete_sequence=[SAFFRON],
                       labels={"months_since_first_order": "Months since first order", "ltv": "Cumulative ₹ per customer"})
-        chart(fig, 460)
+        chart(fig, 560)
 
     left, right = st.columns(2)
     with left:
@@ -315,39 +338,47 @@ with tab_cust:
                      labels={"year_month": "", "net_revenue_inr": "Net revenue (₹)", "customer_type": ""})
         chart(fig, 360)
     with right:
-        pr = promos[~promos["has_no_full_before_period"]].sort_values("revenue_uplift_pct")
-        fig = px.bar(pr, x="revenue_uplift_pct", y="promo_code", orientation="h",
-                     text=pr["revenue_uplift_pct"].map(lambda v: f"+{v:.0f}%"), color_discrete_sequence=[SAFFRON],
-                     hover_data={"discount_given_inr": ":,.0f", "orders_with_code": True},
+        pr = promos[~promos["has_no_full_before_period"]].sort_values("revenue_uplift_pct").copy()
+        pr["result"] = (pr["revenue_uplift_pct"] >= 0).map({True: "Lifted revenue", False: "Lost revenue"})
+        fig = px.bar(pr, x="revenue_uplift_pct", y="promo_code", orientation="h", color="result",
+                     color_discrete_map={"Lifted revenue": GREEN, "Lost revenue": SAFFRON},
+                     text=pr["revenue_uplift_pct"].map(lambda v: f"{v:+.0f}%"),
+                     hover_data={"discount_pct": True, "discount_given_inr": ":,.0f", "orders_with_code": True},
                      title="Promo uplift: daily revenue vs the 28 days before",
-                     labels={"revenue_uplift_pct": "Uplift %", "promo_code": ""})
-        fig.update_traces(textposition="outside", cliponaxis=False)
-        fig.update_yaxes(dtick=1, tickfont_size=10)
-        chart(fig, 560)
+                     labels={"revenue_uplift_pct": "Uplift %", "promo_code": "", "result": ""})
+        fig.update_traces(textposition="outside", cliponaxis=False, textfont_size=10)
+        lo, hi = pr["revenue_uplift_pct"].min(), pr["revenue_uplift_pct"].max()
+        fig.update_xaxes(range=[min(lo, 0) - 25, hi + 25], ticksuffix="%")
+        fig.update_yaxes(dtick=1, tickfont_size=10, categoryorder="total ascending")
+        fig.update_layout(legend=dict(orientation="h", y=1.06, x=0))
+        chart(fig, 600)
 
 # ------------------------------------------------------------------ 5. supply and market (Q6, Q8, Q9)
 with tab_supply:
     left, right = st.columns(2)
     with left:
+        inv = inventory.merge(months[["year_month", "has_major_festival"]], on="year_month", how="left")
         fig = go.Figure()
-        fig.add_bar(x=inventory["year_month"], y=inventory["stockout_warehouse_sku_days"], name="Stock-out days",
-                    marker_color=SAFFRON)
+        fig.add_bar(x=inv["year_month"], y=inv["stockout_warehouse_sku_days"], name="Stock-out days (rust = festival month)",
+                    marker_color=[SAFFRON if f else AMBER for f in inv["has_major_festival"].fillna(False)])
         fig.add_scatter(x=inventory["year_month"], y=inventory["avg_network_days_of_cover"], name="Days of cover",
                         yaxis="y2", line=dict(color="#2F5D7C", width=3))
         fig.update_layout(title="Stock-outs peak in October 2025, right before Diwali",
                           yaxis=dict(title="Warehouse-SKU days at zero stock"),
-                          yaxis2=dict(title="Average days of cover", overlaying="y", side="right"))
-        chart(fig, 400)
+                          yaxis2=dict(title="Average days of cover", overlaying="y", side="right"),
+                          legend=dict(orientation="h", y=1.1, x=0))
+        chart(fig, 400, right=60)
     with right:
         segs = sorted(market.loc[market["is_godesi"], "market_segment"].unique())
         seg = st.selectbox("Market segment (Open Food Facts India)", segs, key="segment",
                            index=segs.index("Sweets & mithai") if "Sweets & mithai" in segs else 0)
         ms = market[market["market_segment"] == seg]
-        show = pd.concat([ms.nsmallest(12, "brand_rank_in_segment"), ms[ms["is_godesi"]]]).drop_duplicates("brand")
+        cut = max(10, int(ms.loc[ms["is_godesi"], "brand_rank_in_segment"].max()))        # down to GoDesi, ties included
+        show = ms[ms["brand_rank_in_segment"] <= cut]
         show = show.sort_values("products")
         fig = px.bar(show, x="products", y="brand", orientation="h",
                      color=show["is_godesi"].map({True: "GoDesi", False: "Other brands"}),
-                     color_discrete_map={"GoDesi": SAFFRON, "Other brands": GREY},
+                     color_discrete_map={"GoDesi": SAFFRON, "Other brands": BLUE},
                      title=f"{seg}: brands by number of products listed",
                      labels={"products": "Products in Open Food Facts India", "brand": "", "color": ""})
         fig.update_yaxes(categoryorder="total ascending")
@@ -362,7 +393,7 @@ with tab_supply:
                   & (growth["market_segment"] != "Uncategorised")]                         # no category in OFF
     top_segs = full.groupby("market_segment")["new_products"].sum().nlargest(6).index
     fig = px.line(full[full["market_segment"].isin(top_segs)], x="listed_year", y="new_products",
-                  color="market_segment", markers=True,
+                  color="market_segment", markers=True, color_discrete_sequence=PALETTE,
                   title="New products listed per year in the largest segments (full years, categorised only)",
                   labels={"listed_year": "", "new_products": "New products", "market_segment": ""})
     chart(fig, 380)
